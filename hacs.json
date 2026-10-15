@@ -1,7 +1,7 @@
 {
   "name": "CVV Dashboard",
+  "content_in_root": false,
   "render_readme": true,
   "homeassistant": "2024.7.0",
-  "zip_release": true,
-  "filename": "cvv_dashboard.zip"
+  "zip_release": false
 }
