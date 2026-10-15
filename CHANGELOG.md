@@ -3,6 +3,12 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.1 - 2026-10-16
+
+### Fixed
+
+- The card, the data command, and the download view are now registered when Home Assistant starts, before the integration loads data from the register. Before this fix, a page that the browser loaded during the start could show "Errore di configurazione" in place of the cards. A reload of the page cleared the error.
+
 ## 0.4.0 - 2026-10-15
 
 ### Added
