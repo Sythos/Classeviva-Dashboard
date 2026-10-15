@@ -3,6 +3,13 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.2.3 - 2026-10-15
+
+### Changed
+
+- The repository has a new name: Classeviva-Dashboard. HACS does not accept "HACS" in the name of a repository.
+- The links in the integration manifest and in the README use the new name. GitHub redirects the old links.
+
 ## 0.2.2 - 2026-10-15
 
 ### Changed
