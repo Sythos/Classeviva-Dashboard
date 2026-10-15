@@ -1,0 +1,37 @@
+# Rust build artifacts
+/target/
+
+# IDE / editor metadata
+.idea/
+.vscode/
+*.swp
+
+# Local packaging output
+/dist/
+/artifacts/
+
+# OS metadata
+Thumbs.db
+.DS_Store
+
+# Local PowerShell helper scripts (never distributed with the client)
+*.ps1
+
+# AI assistant / agentic tooling metadata (never distributed with the client)
+.claude/
+CLAUDE.md
+.cursor/
+.cursorrules
+.windsurf/
+.windsurfrules
+.codex/
+.aider*
+.copilot/
+.github/copilot-instructions.md
+.continue/
+.cline/
+.roo/
+.clinerules
+AGENTS.md
+GEMINI.md
+.gemini/
