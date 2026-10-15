@@ -25,7 +25,9 @@
 """Integrazione CVV Dashboard per Home Assistant."""
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from pathlib import Path
 
 import voluptuous as vol
@@ -35,16 +37,16 @@ from homeassistant.components import websocket_api
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse, callback
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 
-from .const import CONF_ANNO, CONF_PASSWORD, CONF_USERNAME, DOMAIN
+from .const import CONF_ANNO, CONF_PASSWORD, CONF_USERNAME, DOMAIN, UPDATE_MINUTES
 from .coordinator import CvvDashboardCoordinator
 from .download import CvvDashboardDownloadView
-from .sensor import card_data
+from .sensor import anno_effettivo, card_data
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,6 +68,11 @@ SCHEMA_LEGGI = vol.Schema(
 SCHEMA_ISTANZA = vol.Schema({vol.Optional("entry_id"): cv.string})
 WS_CARD_DATA = f"{DOMAIN}/card_data"
 CARD_SENSOR_KEYS = ("media", "grades", "noticeboard", "notes", "scrutini", "agenda")
+
+# Anni scelti al volo nella card: i dati restano in cache quanto un aggiornamento
+# normale, e dopo un errore non si riprova prima di qualche minuto.
+CACHE_ANNO_SECONDI = UPDATE_MINUTES * 60
+ATTESA_DOPO_ERRORE = 300
 
 
 def leggi(dati: dict, chiave: str, default=None):
@@ -136,11 +143,16 @@ def _coordinatori(hass: HomeAssistant) -> dict[str, CvvDashboardCoordinator]:
     {
         vol.Required("type"): WS_CARD_DATA,
         vol.Required("entity_id"): cv.entity_id,
+        vol.Optional("anno"): vol.All(int, vol.Range(min=2000, max=2099)),
     }
 )
-@callback
-def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
-    """Return complete year data without storing it in sensor attributes."""
+@websocket_api.async_response
+async def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
+    """Return complete year data without storing it in sensor attributes.
+
+    Con `anno` diverso da quello dell'istanza i dati dell'anno vengono scaricati
+    al volo (e messi in cache) con la stessa sessione dell'istanza.
+    """
     entity = er.async_get(hass).async_get(msg["entity_id"])
     if (
         entity is None
@@ -186,7 +198,71 @@ def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
         connection.send_error(msg["id"], "entry_not_loaded", "Dati ClasseViva non disponibili.")
         return
 
-    connection.send_result(msg["id"], card_data(coordinator, entity.config_entry_id))
+    anno = msg.get("anno")
+    if anno is None or anno == anno_effettivo(coordinator):
+        connection.send_result(msg["id"], card_data(coordinator, entity.config_entry_id))
+        return
+
+    try:
+        chiave, coordinatore_anno = await _coordinatore_anno(
+            hass, entity.config_entry_id, coordinator, anno
+        )
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "anno_non_disponibile", str(err))
+        return
+    connection.send_result(msg["id"], card_data(coordinatore_anno, chiave))
+
+
+async def _coordinatore_anno(
+    hass: HomeAssistant,
+    entry_id: str,
+    base: CvvDashboardCoordinator,
+    anno: int,
+) -> tuple[str, CvvDashboardCoordinator]:
+    """Coordinatore di un anno non configurato, con i dati aggiornati o in cache.
+
+    Non fa login in piu': usa token, sessione del portale e blocco dell'istanza
+    principale. Chiede solo anni che il portfolio elenca, mai anni inventati.
+    """
+    if anno not in base.api.anni_disponibili():
+        raise HomeAssistantError("Anno scolastico non disponibile per questo account.")
+
+    chiave = f"{entry_id}:{anno}"
+    anni = hass.data[DOMAIN].setdefault("_anni", {})
+    voce = anni.get(chiave)
+    if voce is None:
+        username, password = base.api.credenziali
+        voce = anni[chiave] = {
+            "coord": CvvDashboardCoordinator(
+                hass, username, password, anno, condiviso=base
+            ),
+            "ts": None,
+            "errore": None,
+            "lock": asyncio.Lock(),
+        }
+
+    coordinatore = voce["coord"]
+    async with voce["lock"]:
+        adesso = time.monotonic()
+        fresco = voce["ts"] is not None and adesso - voce["ts"] < CACHE_ANNO_SECONDI
+        if not fresco:
+            if (
+                coordinatore.data is None
+                and voce["errore"] is not None
+                and adesso - voce["errore"] < ATTESA_DOPO_ERRORE
+            ):
+                raise HomeAssistantError(
+                    "Dati dell'anno non disponibili. Riprova tra qualche minuto."
+                )
+            await coordinatore.async_refresh()
+            if coordinatore.last_update_success:
+                voce["ts"] = adesso
+                voce["errore"] = None
+            else:
+                voce["errore"] = adesso
+                if coordinatore.data is None:
+                    raise HomeAssistantError("Dati dell'anno non disponibili.")
+    return chiave, coordinatore
 
 
 def _registra_websocket(hass: HomeAssistant) -> None:
@@ -300,6 +376,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        anni = hass.data[DOMAIN].get("_anni", {})
+        for chiave in [k for k in anni if k.startswith(f"{entry.entry_id}:")]:
+            anni.pop(chiave, None)
         if not _coordinatori(hass):
             for servizio in (SERVIZIO_LEGGI, SERVIZIO_TESTI, SERVIZIO_AGGIORNA):
                 hass.services.async_remove(DOMAIN, servizio)

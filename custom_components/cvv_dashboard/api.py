@@ -109,6 +109,40 @@ class CvvDashboardApi:
         self.first_name: str = "Studente"
         self.newest_yy: int | None = None
         self.prev_host: str | None = None
+        # Anni di inizio elencati nel portfolio, dal piu' recente (vuoto se non letti).
+        self.anni_portfolio: list[int] = []
+
+    @property
+    def credenziali(self) -> tuple[str, str]:
+        """Utente e password dell'account, per creare un client gemello."""
+        return self._username, self._password
+
+    def copia_sessione_da(self, altro: CvvDashboardApi) -> None:
+        """Prende lo stato di login di un altro client dello stesso account.
+
+        Serve ai client per un anno scelto al volo: riusano i token gia' validi
+        invece di fare un nuovo login sul registro.
+        """
+        self.token = altro.token
+        self.token_ap = altro.token_ap
+        self.student_id = altro.student_id
+        self.first_name = altro.first_name
+        self.newest_yy = altro.newest_yy
+        self.prev_host = altro.prev_host
+        self.anni_portfolio = list(altro.anni_portfolio)
+
+    def anni_disponibili(self) -> list[int]:
+        """Anni di inizio che si possono chiedere, dal piu' recente.
+
+        Se il portfolio ne elenca piu' di uno si usa quell'elenco. Altrimenti si
+        offrono solo l'anno in corso e quello appena concluso, gli unici server
+        che il client sa gia' raggiungere.
+        """
+        if len(self.anni_portfolio) > 1:
+            return list(self.anni_portfolio)
+        if self.newest_yy:
+            return [self.newest_yy, self.newest_yy - 1]
+        return []
 
     def _headers(self, token: str | None = None) -> dict[str, str]:
         h = {
@@ -168,13 +202,21 @@ class CvvDashboardApi:
         """Legge da myportfolio l'anno scolastico più recente e calcola il server storico."""
         status, data = await self._get(BASE_HOST, "/rest/v1/xauth/myportfolio", self.token)
         yy = None
+        anni: set[int] = set()
         if status == 200 and isinstance(data, dict):
             for item in data.get("portfolio", {}).get("items", []):
                 info = item.get("personalInfo", {})
                 if info.get("schoolYY"):
-                    yy = int(info["schoolYY"])
-                    break
+                    try:
+                        valore = int(info["schoolYY"])
+                    except (TypeError, ValueError):
+                        continue
+                    if yy is None:
+                        yy = valore
+                    if 2000 <= valore <= 2099:
+                        anni.add(valore)
         self.newest_yy = yy
+        self.anni_portfolio = sorted(anni, reverse=True)
         if yy:
             # 2026 -> web25 (anno concluso 2025/2026). Sottodominio = (anno inizio - 1) % 100.
             self.prev_host = f"web{(yy - 1) % 100:02d}.spaggiari.eu"

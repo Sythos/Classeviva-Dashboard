@@ -61,7 +61,11 @@ class CvvDashboardDownloadView(HomeAssistantView):
         entry_id = q.get("entry_id")
         kind = q.get("kind")
 
-        coordinator = self.hass.data.get(DOMAIN, {}).get(entry_id)
+        dati = self.hass.data.get(DOMAIN, {})
+        coordinator = dati.get(entry_id)
+        if coordinator is None:
+            # Anno scelto al volo nella card: la chiave e' "<entry_id>:<anno>".
+            coordinator = (dati.get("_anni", {}).get(entry_id) or {}).get("coord")
         # Sotto DOMAIN ci sono anche valori che non sono coordinatori (es. flag).
         if coordinator is None or not hasattr(coordinator, "api"):
             return web.Response(status=404, text="Integrazione ClasseViva non trovata")

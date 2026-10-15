@@ -596,6 +596,27 @@ class AgendaSensor(_Base):
         }
 
 
+def anno_effettivo(coordinator: CvvDashboardCoordinator) -> int | None:
+    """Anno di inizio dei dati del coordinatore: quello scelto, o quello letto dai dati."""
+    if coordinator.anno is not None:
+        return coordinator.anno
+    data = coordinator.data or {}
+    for source in (
+        data.get("grades_year"),
+        data.get("agenda_anno"),
+        data.get("note_anno"),
+        data.get("scrutini_anno"),
+    ):
+        if source:
+            try:
+                year_start = parse_anno(source)
+            except ValueError:
+                continue
+            if year_start is not None:
+                return year_start
+    return None
+
+
 def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
     """Build the complete, school-year-scoped payload for the Lovelace card.
 
@@ -603,21 +624,7 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
     It is not written to sensor state attributes or the recorder.
     """
     data = coordinator.data or {}
-    year_start = coordinator.anno
-    if year_start is None:
-        for source in (
-            data.get("grades_year"),
-            data.get("agenda_anno"),
-            data.get("note_anno"),
-            data.get("scrutini_anno"),
-        ):
-            if source:
-                try:
-                    year_start = parse_anno(source)
-                except ValueError:
-                    continue
-                if year_start is not None:
-                    break
+    year_start = anno_effettivo(coordinator)
 
     media_sensor = MediaSensor(coordinator, entry_id)
     grades_sensor = GradesSensor(coordinator, entry_id)
@@ -703,6 +710,7 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
     return {
         "nome": coordinator.first_name,
         "anno": year_start,
+        "anni": coordinator.api.anni_disponibili(),
         "entita": {
             "media": {"state": media_value, "attributes": media_attributes},
             "voti": {"state": len(grade_items), "attributes": grade_attributes},

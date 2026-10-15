@@ -25,6 +25,7 @@
 """DataUpdateCoordinator per ClasseViva."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -54,6 +55,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         username: str,
         password: str,
         anno: int | None = None,
+        condiviso: CvvDashboardCoordinator | None = None,
     ) -> None:
         super().__init__(
             hass,
@@ -62,12 +64,22 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=UPDATE_MINUTES),
         )
         self.anno = anno
+        self._condiviso = condiviso
         self.api = CvvDashboardApi(async_get_clientsession(hass), username, password, anno)
-        # Il portale web va su una sessione DEDICATA: usa i cookie di sessione PHP
-        # e non vanno mescolati con quelli condivisi del resto di Home Assistant.
-        self.web = CvvDashboardWebApi(
-            async_create_clientsession(hass), username, password
-        )
+        if condiviso is None:
+            # Il portale web va su una sessione DEDICATA: usa i cookie di sessione PHP
+            # e non vanno mescolati con quelli condivisi del resto di Home Assistant.
+            self.web = CvvDashboardWebApi(
+                async_create_clientsession(hass), username, password
+            )
+            self._lock = asyncio.Lock()
+        else:
+            # Coordinatore per un anno scelto al volo: riusa login, token, sessione
+            # del portale e blocco dell'istanza principale, cosi' non fa login in
+            # piu' e non lavora mai in parallelo con lei sullo stesso account.
+            self.api.copia_sessione_da(condiviso.api)
+            self.web = condiviso.web
+            self._lock = condiviso._lock
 
     @property
     def first_name(self) -> str:
@@ -93,6 +105,16 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         return f"{base}_{self.anno}" if self.anno is not None else base
 
     async def _async_update_data(self) -> dict:
+        async with self._lock:
+            if self._condiviso is not None:
+                self.api.copia_sessione_da(self._condiviso.api)
+            try:
+                return await self._scarica_dati()
+            finally:
+                if self._condiviso is not None and self.api.token:
+                    self._condiviso.api.copia_sessione_da(self.api)
+
+    async def _scarica_dati(self) -> dict:
         try:
             async with async_timeout.timeout(30):
                 data = await self.api.async_fetch()
