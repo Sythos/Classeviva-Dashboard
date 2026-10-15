@@ -1,8 +1,8 @@
 # CVV Dashboard
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![Versione](https://img.shields.io/github/v/release/Sythos/Classeviva-Dashboard-HACS?label=versione&style=flat)](https://github.com/Sythos/Classeviva-Dashboard-HACS/releases)
-[![Licenza MIT](https://img.shields.io/github/license/Sythos/Classeviva-Dashboard-HACS?label=licenza&style=flat)](LICENSE)
+[![Versione](https://img.shields.io/github/v/release/Sythos/Classeviva-Dashboard?label=versione&style=flat)](https://github.com/Sythos/Classeviva-Dashboard/releases)
+[![Licenza MIT](https://img.shields.io/github/license/Sythos/Classeviva-Dashboard?label=licenza&style=flat)](LICENSE)
 
 Integrazione per **Home Assistant** che porta il registro elettronico **ClasseViva**
 (Gruppo Spaggiari) in una dashboard completa: medie, voti, bacheca, agenda, annotazioni,
@@ -153,7 +153,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.2.2
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.2.3
     config:
       vista: combo
       anno_scolastico: "26/27"
