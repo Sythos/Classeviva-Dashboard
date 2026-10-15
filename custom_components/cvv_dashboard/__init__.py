@@ -102,6 +102,31 @@ def leggi(dati: dict, chiave: str, default=None):
     return default
 
 
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Prepara il frontend all'avvio, prima di qualunque istanza e senza rete.
+
+    La card deve essere nell'elenco degli script gia' quando il browser carica
+    la prima pagina. Le istanze invece scaricano i dati dal registro, e possono
+    metterci decine di secondi: se la card aspettasse loro, una pagina caricata
+    nel frattempo non avrebbe lo script e mostrerebbe "Errore di configurazione".
+    """
+    await _prepara_frontend(hass)
+    return True
+
+
+async def _prepara_frontend(hass: HomeAssistant) -> None:
+    """Registra card, comando WebSocket e vista di download, una volta sola."""
+    hass.data.setdefault(DOMAIN, {})
+    _registra_websocket(hass)
+    await _registra_card(hass)
+    if not hass.data[DOMAIN].get("_download_view"):
+        hass.http.register_view(CvvDashboardDownloadView(hass))
+        hass.data[DOMAIN]["_download_view"] = True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Configura l'integrazione a partire da una config entry (UI)."""
     coordinator = CvvDashboardCoordinator(
@@ -114,16 +139,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
-    _registra_websocket(hass)
-    await _registra_card(hass)
+    # Gia' fatto da async_setup: qui non fa nulla, ma copre un avvio senza di esso.
+    await _prepara_frontend(hass)
     # Le opzioni (voce nel menu laterale) si applicano senza ricaricare l'istanza.
     entry.async_on_unload(entry.add_update_listener(_opzioni_cambiate))
     await _aggiorna_pannello(hass)
-
-    # Registra una sola volta la vista per il download degli allegati.
-    if not hass.data[DOMAIN].get("_download_view"):
-        hass.http.register_view(CvvDashboardDownloadView(hass))
-        hass.data[DOMAIN]["_download_view"] = True
 
     _registra_servizi(hass)
 
