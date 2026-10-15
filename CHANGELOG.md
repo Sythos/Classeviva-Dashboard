@@ -3,6 +3,12 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.2.1 - 2026-10-15
+
+### Fixed
+
+- The year menu shows when the card loads for the first time. Before this fix, the menu showed only after a change of tab.
+
 ## 0.2.0 - 2026-10-15
 
 ### Added
