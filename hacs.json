@@ -1,6 +1,7 @@
 {
   "name": "CVV Dashboard",
   "content_in_root": false,
+  "country": "IT",
   "render_readme": true,
   "homeassistant": "2024.7.0",
   "zip_release": false
