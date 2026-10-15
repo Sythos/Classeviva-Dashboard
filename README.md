@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/custom_components/cvv_dashboard/brand/icon@2x.png" width="128" height="128" alt="Icona di CVV Dashboard">
+</p>
+
 # CVV Dashboard
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
