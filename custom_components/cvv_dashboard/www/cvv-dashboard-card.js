@@ -60,7 +60,7 @@
 
 // Alza questo numero a ogni modifica: compare nella console del browser e
 // serve a capire al volo se la pagina sta usando il file nuovo o quello in cache.
-const VERSIONE = "0.2.0";
+const VERSIONE = "0.2.1";
 
 const VISTE = [
   { id: "medie", nome: "Medie", icona: "◎" },
@@ -601,6 +601,9 @@ class CvvDashboardCard extends HTMLElement {
 
   /** Menu a tendina dell'anno, vuoto se c'e' un solo anno o se e' disattivato. */
   _htmlSelettore() {
+    // L'elenco si ricalcola a ogni disegno: la risposta del server porta anni nuovi
+    // dopo che la card ha gia' scelto cosa mostrare.
+    this._anniMenu = this._elencoAnni();
     if (this._config.selettore_anno === false || this._anniMenu.length < 2) return "";
     const oggi = annoDelGiorno();
     const automatico = this._annoAutomatico(this._anniMenu);
