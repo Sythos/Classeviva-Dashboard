@@ -66,8 +66,12 @@ Home Assistant e aggiungi l'integrazione come al punto 4.
 | Seleziona Anno | `Ultimo` per l'anno più recente con dati, oppure un anno preciso |
 
 L'anno accetta i formati `25/26`, `2025/2026` o `25`, sempre interpretato come anno di
-**inizio**. Lo stesso account si può aggiungere più volte su anni diversi: ogni
-istanza crea un dispositivo separato. L'anno scolastico va dal 1° settembre al 31 agosto.
+**inizio**. L'anno scolastico va dal 1° settembre al 31 agosto.
+
+Per guardare gli anni passati nella card **non serve** aggiungere l'account più volte: vedi
+[Cambiare anno scolastico](#cambiare-anno-scolastico). Aggiungere lo stesso account su un
+anno preciso resta utile solo se vuoi sensori e calendari separati per quell'anno (ogni
+istanza crea un dispositivo distinto).
 
 ## Configurabilità della card
 
@@ -84,7 +88,32 @@ Opzioni comuni:
 | `anno_scolastico` | anno configurato, ad esempio `"26/27"` | più recente |
 | `titolo` | testo dell'intestazione (`""` per nasconderla) | nome dello studente |
 | `animazioni` | `true` / `false` | `true` |
+| `selettore_anno` | `true` / `false`: mostra il menu per cambiare anno | `true` |
 | `versione` | `true` mostra la versione della card in fondo | `false` |
+
+### Cambiare anno scolastico
+
+In alto a destra la card mostra un **menu a tendina con l'anno scolastico**, quando ce n'è
+più di uno:
+
+- **Automatico** segue l'anno in corso. Il nuovo anno parte il **1° settembre**: fino al
+  31 agosto vale l'anno iniziato a settembre precedente. Se quell'anno non è disponibile
+  si usa il più recente.
+- Gli anni offerti sono quelli delle istanze configurate più quelli che il registro elenca
+  per lo studente. Se il registro ne elenca uno solo, il menu propone l'anno in corso e
+  quello appena concluso.
+- La scelta resta nel browser. Nella pagina del menu laterale vale per tutti gli studenti.
+- Un anno che non ha un'istanza viene scaricato **al momento**, riusando il login già
+  attivo, e tenuto in cache per 30 minuti: non servono altri accessi al registro. Il
+  primo caricamento di un anno passato può richiedere qualche secondo.
+- `anno_scolastico` nella configurazione resta l'anno di partenza. Con
+  `selettore_anno: false` il menu sparisce e vale solo `anno_scolastico`.
+
+```yaml
+type: custom:cvv-dashboard-card
+account: anna
+anno_scolastico: "25/26"   # anno di partenza, poi si cambia dal menu
+```
 
 Solo per `vista: medie`:
 
@@ -124,7 +153,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.1.0
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.2.0
     config:
       vista: combo
       anno_scolastico: "26/27"
