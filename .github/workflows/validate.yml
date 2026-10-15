@@ -51,6 +51,16 @@ jobs:
         with:
           category: integration
 
+  changelog:
+    name: Changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check that the changelog has a section for the manifest version
+        run: |
+          version=$(python3 -c "import json; print(json.load(open('custom_components/cvv_dashboard/manifest.json'))['version'])")
+          bash .github/scripts/release-notes.sh "${version}" > /dev/null
+
   syntax:
     name: Syntax
     runs-on: ubuntu-latest
