@@ -4,6 +4,8 @@
 [![Versione](https://img.shields.io/github/v/release/Sythos/Classeviva-Dashboard?label=versione&style=flat)](https://github.com/Sythos/Classeviva-Dashboard/releases)
 [![Licenza MIT](https://img.shields.io/github/license/Sythos/Classeviva-Dashboard?label=licenza&style=flat)](LICENSE)
 
+[![Apri il repository in HACS su My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration)
+
 Integrazione per **Home Assistant** che porta il registro elettronico **ClasseViva**
 (Gruppo Spaggiari) in una dashboard completa: medie, voti, bacheca, agenda, annotazioni,
 scrutini e compiti, più i calendari integrati in Home Assistant.
@@ -43,6 +45,12 @@ mostrano le sole icone.
 ## Installazione
 
 ### HACS
+
+Clicca il pulsante per aprire il repository nel tuo HACS:
+
+[![Apri il repository in HACS su My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration)
+
+Oppure, a mano:
 
 1. HACS → menu ⋮ → *Repository personalizzati*.
 2. Incolla l'URL di questo repository, categoria **Integration**.
