@@ -14,15 +14,50 @@
           "Password": "La password del registro. Viene salvata solo in Home Assistant.",
           "Anno": "\"Ultimo\" segue l'anno più recente disponibile. Puoi anche scrivere l'anno scolastico: 25/26, 2025/2026 oppure 25."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reautenticazione",
+        "description": "La password dell'account {username} non è più valida. Inserisci quella nuova.",
+        "data": {
+          "Password": "Password"
+        },
+        "data_description": {
+          "Password": "La password attuale del registro. Viene salvata solo in Home Assistant."
+        }
       }
     },
     "error": {
       "invalid_auth": "Credenziali errate o account bloccato.",
       "cannot_connect": "Impossibile connettersi a ClasseViva.",
-      "anno_non_valido": "Anno scolastico non riconosciuto. Usa \"Ultimo\", oppure un formato come 25/26, 2025/2026 o 25."
+      "anno_non_valido": "Anno scolastico non riconosciuto. Usa \"Ultimo\", oppure un formato come 25/26, 2025/2026 o 25.",
+      "wrong_account": "Questo account è diverso da quello già configurato."
     },
     "abort": {
-      "already_configured": "Questo studente è già configurato per questo anno scolastico."
+      "already_configured": "Questo studente è già configurato per questo anno scolastico.",
+      "reauth_successful": "Password aggiornata."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni",
+        "description": "Account {username}. Lascia la password vuota per tenere quella attuale.",
+        "data": {
+          "Password": "Nuova password",
+          "Anno": "Seleziona Anno"
+        },
+        "data_description": {
+          "Password": "Compila solo se hai cambiato la password sul registro.",
+          "Anno": "\"Ultimo\" segue l'anno più recente disponibile. Puoi anche scrivere l'anno scolastico: 25/26, 2025/2026 oppure 25."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenziali errate o account bloccato.",
+      "cannot_connect": "Impossibile connettersi a ClasseViva.",
+      "anno_non_valido": "Anno scolastico non riconosciuto. Usa \"Ultimo\", oppure un formato come 25/26, 2025/2026 o 25.",
+      "wrong_account": "Questo account è diverso da quello già configurato.",
+      "already_configured": "Esiste già un'istanza per questo anno scolastico."
     }
   }
 }

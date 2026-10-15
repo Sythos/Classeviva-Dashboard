@@ -14,15 +14,50 @@
           "Password": "Your register password. It is stored only in Home Assistant.",
           "Anno": "\"Ultimo\" follows the most recent year available. You can also type a school year: 25/26, 2025/2026 or 25."
         }
+      },
+      "reauth_confirm": {
+        "title": "Reauthentication",
+        "description": "The password of the account {username} is not valid now. Enter the new password.",
+        "data": {
+          "Password": "Password"
+        },
+        "data_description": {
+          "Password": "The current password of the register. Home Assistant stores it only on this system."
+        }
       }
     },
     "error": {
       "invalid_auth": "Wrong credentials, or the account is locked.",
       "cannot_connect": "Cannot reach ClasseViva.",
-      "anno_non_valido": "School year not recognised. Use \"Ultimo\", or a format like 25/26, 2025/2026 or 25."
+      "anno_non_valido": "School year not recognised. Use \"Ultimo\", or a format like 25/26, 2025/2026 or 25.",
+      "wrong_account": "This account is different from the account that is already set up."
     },
     "abort": {
-      "already_configured": "This student is already configured for this school year."
+      "already_configured": "This student is already configured for this school year.",
+      "reauth_successful": "The password is updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Account {username}. Leave the password empty to keep the current password.",
+        "data": {
+          "Password": "New password",
+          "Anno": "Select year"
+        },
+        "data_description": {
+          "Password": "Fill this field only if you changed the password on the register.",
+          "Anno": "\"Ultimo\" follows the latest available year. You can also type the school year: 25/26, 2025/2026 or 25."
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Wrong credentials, or the account is locked.",
+      "cannot_connect": "Cannot reach ClasseViva.",
+      "anno_non_valido": "School year not recognised. Use \"Ultimo\", or a format like 25/26, 2025/2026 or 25.",
+      "wrong_account": "This account is different from the account that is already set up.",
+      "already_configured": "An instance for this school year already exists."
     }
   }
 }
