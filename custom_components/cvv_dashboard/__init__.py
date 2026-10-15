@@ -33,7 +33,7 @@ from pathlib import Path
 import voluptuous as vol
 
 from homeassistant.auth.permissions.const import POLICY_READ
-from homeassistant.components import websocket_api
+from homeassistant.components import frontend, panel_custom, websocket_api
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
@@ -43,7 +43,14 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 
-from .const import CONF_ANNO, CONF_PASSWORD, CONF_USERNAME, DOMAIN, UPDATE_MINUTES
+from .const import (
+    CONF_ANNO,
+    CONF_PASSWORD,
+    CONF_SIDEBAR,
+    CONF_USERNAME,
+    DOMAIN,
+    UPDATE_MINUTES,
+)
 from .coordinator import CvvDashboardCoordinator
 from .download import CvvDashboardDownloadView
 from .sensor import anno_effettivo, card_data
@@ -55,6 +62,10 @@ PLATFORMS = ["sensor", "calendar"]
 # La card Lovelace viaggia dentro l'integrazione e viene servita da qui.
 CARD_URL_BASE = "/cvv_dashboard_static"
 CARD_FILE = "cvv-dashboard-card.js"
+
+# Voce nel menu laterale, creata se almeno un'istanza ha l'opzione attiva.
+PANEL_URL_PATH = "cvv-dashboard"
+PANEL_ELEMENT = "cvv-dashboard-card-panel"
 
 SERVIZIO_LEGGI = "leggi_comunicazione"
 SERVIZIO_TESTI = "carica_testi_bacheca"
@@ -105,6 +116,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     _registra_websocket(hass)
     await _registra_card(hass)
+    # Le opzioni (voce nel menu laterale) si applicano senza ricaricare l'istanza.
+    entry.async_on_unload(entry.add_update_listener(_opzioni_cambiate))
+    await _aggiorna_pannello(hass)
 
     # Registra una sola volta la vista per il download degli allegati.
     if not hass.data[DOMAIN].get("_download_view"):
@@ -115,6 +129,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _opzioni_cambiate(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Applica la scelta della voce nel menu laterale quando cambiano le opzioni."""
+    await _aggiorna_pannello(hass)
+
+
+async def _aggiorna_pannello(hass: HomeAssistant, escludi: str | None = None) -> None:
+    """Crea o toglie la voce nel menu laterale.
+
+    La voce c'e' se almeno un'istanza (esclusa `escludi`, quella che si sta
+    scaricando) ha l'opzione attiva. Se esiste gia' una pagina con lo stesso
+    indirizzo, per esempio messa a mano in configuration.yaml, non la tocca.
+    """
+    desiderata = any(
+        e.options.get(CONF_SIDEBAR, False)
+        for e in hass.config_entries.async_entries(DOMAIN)
+        if e.entry_id != escludi
+    )
+    dati = hass.data.setdefault(DOMAIN, {})
+    presente = bool(dati.get("_pannello"))
+    if desiderata and not presente:
+        if PANEL_URL_PATH in (hass.data.get("frontend_panels") or {}):
+            _LOGGER.warning(
+                "La pagina %s esiste gia': la voce automatica nel menu laterale non viene creata",
+                PANEL_URL_PATH,
+            )
+            return
+        integrazione = await async_get_integration(hass, DOMAIN)
+        await panel_custom.async_register_panel(
+            hass,
+            webcomponent_name=PANEL_ELEMENT,
+            frontend_url_path=PANEL_URL_PATH,
+            module_url=f"{CARD_URL_BASE}/{CARD_FILE}?v={integrazione.version}",
+            sidebar_title="CVV Dashboard",
+            sidebar_icon="mdi:school",
+            require_admin=False,
+            config={},
+        )
+        dati["_pannello"] = True
+    elif not desiderata and presente:
+        frontend.async_remove_panel(hass, PANEL_URL_PATH)
+        dati["_pannello"] = False
 
 
 async def _registra_card(hass: HomeAssistant) -> None:
@@ -382,4 +439,5 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not _coordinatori(hass):
             for servizio in (SERVIZIO_LEGGI, SERVIZIO_TESTI, SERVIZIO_AGGIORNA):
                 hass.services.async_remove(DOMAIN, servizio)
+        await _aggiorna_pannello(hass, escludi=entry.entry_id)
     return unload_ok

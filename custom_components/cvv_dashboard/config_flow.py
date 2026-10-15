@@ -36,6 +36,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
+    BooleanSelector,
     SelectSelectorMode,
     TextSelector,
     TextSelectorConfig,
@@ -43,7 +44,14 @@ from homeassistant.helpers.selector import (
 )
 
 from .api import CvvDashboardApi, CvvDashboardAuthError, CvvDashboardApiError, parse_anno
-from .const import ANNO_ULTIMO, CONF_ANNO, CONF_PASSWORD, CONF_USERNAME, DOMAIN
+from .const import (
+    ANNO_ULTIMO,
+    CONF_ANNO,
+    CONF_PASSWORD,
+    CONF_SIDEBAR,
+    CONF_USERNAME,
+    DOMAIN,
+)
 
 # Quanti anni scolastici passati proporre nella tendina.
 ANNI_PROPOSTI = 5
@@ -245,6 +253,7 @@ class CvvDashboardOptionsFlow(config_entries.OptionsFlow):
         entry = self.hass.config_entries.async_get_entry(self._entry_id)
         errors: dict[str, str] = {}
         anno_attuale = entry.data.get(CONF_ANNO)
+        sidebar_attuale = bool(entry.options.get(CONF_SIDEBAR, False))
 
         if user_input is not None:
             try:
@@ -253,8 +262,13 @@ class CvvDashboardOptionsFlow(config_entries.OptionsFlow):
                 errors[CONF_ANNO] = "anno_non_valido"
             else:
                 password = user_input.get(CONF_PASSWORD) or entry.data[CONF_PASSWORD]
+                opzioni = {
+                    **entry.options,
+                    CONF_SIDEBAR: bool(user_input.get(CONF_SIDEBAR, sidebar_attuale)),
+                }
                 if password == entry.data[CONF_PASSWORD] and anno == anno_attuale:
-                    return self.async_create_entry(data={})
+                    # Cambia al massimo la voce nel menu laterale: niente login.
+                    return self.async_create_entry(data=opzioni)
 
                 studente = _studente_della_entry(entry)
                 nuova = _radice(studente, anno)
@@ -286,7 +300,7 @@ class CvvDashboardOptionsFlow(config_entries.OptionsFlow):
                         self.hass.async_create_task(
                             self.hass.config_entries.async_reload(entry.entry_id)
                         )
-                        return self.async_create_entry(data={})
+                        return self.async_create_entry(data=opzioni)
 
         return self.async_show_form(
             step_id="init",
@@ -304,6 +318,7 @@ class CvvDashboardOptionsFlow(config_entries.OptionsFlow):
                             mode=SelectSelectorMode.DROPDOWN,
                         )
                     ),
+                    vol.Optional(CONF_SIDEBAR, default=sidebar_attuale): BooleanSelector(),
                 }
             ),
             description_placeholders={"username": entry.data[CONF_USERNAME]},

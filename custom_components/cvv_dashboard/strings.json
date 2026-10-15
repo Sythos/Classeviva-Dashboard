@@ -44,11 +44,13 @@
         "description": "Account {username}. Lascia la password vuota per tenere quella attuale.",
         "data": {
           "Password": "Nuova password",
-          "Anno": "Seleziona Anno"
+          "Anno": "Seleziona Anno",
+          "Sidebar": "Mostra nel menu laterale"
         },
         "data_description": {
           "Password": "Compila solo se hai cambiato la password sul registro.",
-          "Anno": "\"Ultimo\" segue l'anno più recente disponibile. Puoi anche scrivere l'anno scolastico: 25/26, 2025/2026 oppure 25."
+          "Anno": "\"Ultimo\" segue l'anno più recente disponibile. Puoi anche scrivere l'anno scolastico: 25/26, 2025/2026 oppure 25.",
+          "Sidebar": "Aggiunge la voce CVV Dashboard al menu laterale di Home Assistant. Vale per tutte le istanze: basta attivarla su una."
         }
       }
     },

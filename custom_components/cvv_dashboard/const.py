@@ -29,6 +29,8 @@ DOMAIN = "cvv_dashboard"
 CONF_USERNAME = "Username"
 CONF_PASSWORD = "Password"
 CONF_ANNO = "Anno"
+# Opzione della config entry: mostra la dashboard nel menu laterale.
+CONF_SIDEBAR = "Sidebar"
 
 # Valore che significa "usa l'anno piu' recente che l'account puo' vedere".
 ANNO_ULTIMO = "Ultimo"

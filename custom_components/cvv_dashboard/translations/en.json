@@ -44,11 +44,13 @@
         "description": "Account {username}. Leave the password empty to keep the current password.",
         "data": {
           "Password": "New password",
-          "Anno": "Select year"
+          "Anno": "Select year",
+          "Sidebar": "Show in the sidebar"
         },
         "data_description": {
           "Password": "Fill this field only if you changed the password on the register.",
-          "Anno": "\"Ultimo\" follows the latest available year. You can also type the school year: 25/26, 2025/2026 or 25."
+          "Anno": "\"Ultimo\" follows the latest available year. You can also type the school year: 25/26, 2025/2026 or 25.",
+          "Sidebar": "Adds the CVV Dashboard entry to the Home Assistant sidebar. It is valid for all instances: you only need to turn it on for one."
         }
       }
     },
