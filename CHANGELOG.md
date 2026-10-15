@@ -3,6 +3,13 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.2.2 - 2026-10-15
+
+### Changed
+
+- The HACS manifest lists Italy as the country of the project.
+- The validation workflow runs every day.
+
 ## 0.2.1 - 2026-10-15
 
 ### Fixed
