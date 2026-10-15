@@ -1,0 +1,18 @@
+{
+  "domain": "cvv_dashboard",
+  "name": "CVV Dashboard",
+  "codeowners": [
+    "@Sythos"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
+  "documentation": "https://github.com/Sythos/Classeviva-Dashboard-HACS",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/Sythos/Classeviva-Dashboard-HACS/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
