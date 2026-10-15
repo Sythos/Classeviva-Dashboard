@@ -3,6 +3,20 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.0 - 2026-10-15
+
+### Added
+
+- The options of the integration have a new switch: "Show in the sidebar".
+- When you turn it on, the integration adds the CVV Dashboard page to the Home Assistant sidebar. It shows every student. You do not need to edit `configuration.yaml` and you do not need to restart.
+- The switch is valid for all instances. The sidebar entry stays while at least one instance has the switch on.
+- If a page with the path `cvv-dashboard` already exists, for example from `configuration.yaml`, the integration does not change it and does not add its own entry.
+
+### Changed
+
+- The integration depends on the Home Assistant component `panel_custom`.
+- The brand images are smaller. The four files go from 965 KB to 262 KB.
+
 ## 0.3.0 - 2026-10-15
 
 ### Added

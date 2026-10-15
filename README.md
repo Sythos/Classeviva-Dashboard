@@ -163,7 +163,13 @@ L'editor visuale della card propone gli anni disponibili tra le istanze configur
 
 ### Voce nel menu laterale
 
-Per mostrare la dashboard come pagina a schermo intero nel menu laterale, aggiungi a
+**Modo semplice:** *Impostazioni → Dispositivi e servizi → CVV Dashboard → Configura* e attiva
+**Mostra nel menu laterale**. La voce *CVV Dashboard* compare subito, senza riavviare e senza
+toccare `configuration.yaml`. Basta attivarla su una sola istanza: vale per tutti gli studenti,
+e si toglie disattivando l'opzione. Se hai già una pagina con indirizzo `cvv-dashboard` messa a
+mano (vedi sotto), l'integrazione non la tocca e non crea la voce automatica: scegli una delle due.
+
+**A mano**, per personalizzare titolo, icona o le opzioni della pagina, aggiungi a
 `configuration.yaml`:
 
 ```yaml
@@ -172,7 +178,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.3.0
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.0
     config:
       vista: combo
       anno_scolastico: "26/27"
