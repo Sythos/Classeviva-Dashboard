@@ -38,6 +38,10 @@
  *   anno_scolastico  anno selezionato, per esempio "26/27"; senza valore usa il più recente
  *   titolo      testo dell'intestazione ("" per nasconderla)
  *   animazioni  true | false                                (default: true)
+ *   selettore_anno  true | false: menu per cambiare anno scolastico (default: true)
+ *               "anno_scolastico" resta l'anno di partenza; la scelta fatta nel menu
+ *               viene ricordata dal browser. "Automatico" segue l'anno in corso
+ *               (il nuovo anno parte il 1° settembre).
  *
  * Solo per vista: medie
  *   layout      auto | verticale | orizzontale                (default: auto)
@@ -56,7 +60,7 @@
 
 // Alza questo numero a ogni modifica: compare nella console del browser e
 // serve a capire al volo se la pagina sta usando il file nuovo o quello in cache.
-const VERSIONE = "0.1.0";
+const VERSIONE = "0.2.0";
 
 const VISTE = [
   { id: "medie", nome: "Medie", icona: "◎" },
@@ -84,6 +88,29 @@ function annoInizio(valore) {
 
 function annoEtichetta(anno) {
   return `${String(anno % 100).padStart(2, "0")}/${String((anno + 1) % 100).padStart(2, "0")}`;
+}
+
+// Anno scolastico che contiene la data di oggi: il nuovo anno parte il 1° settembre.
+function annoDelGiorno(oggi = new Date()) {
+  return oggi.getMonth() >= 8 ? oggi.getFullYear() : oggi.getFullYear() - 1;
+}
+
+const PREFISSO_ANNO = "cvv-dashboard-card:anno:";
+
+function leggiAnnoSalvato(chiave) {
+  try {
+    const valore = localStorage.getItem(PREFISSO_ANNO + chiave);
+    return valore ? annoInizio(valore) : null;
+  } catch (e) {
+    return null; // storage non disponibile
+  }
+}
+
+function salvaAnno(chiave, anno) {
+  try {
+    if (anno === null) localStorage.removeItem(PREFISSO_ANNO + chiave);
+    else localStorage.setItem(PREFISSO_ANNO + chiave, String(anno));
+  } catch (e) { /* storage non disponibile */ }
 }
 
 function anniCard(hass, account, voti) {
@@ -138,6 +165,11 @@ const STILE = `
   /* ---------- intestazione ---------- */
   .testa { display: flex; align-items: baseline; gap: 10px; padding: 18px 20px 0; flex-wrap: wrap; }
   .titolo { font-size: 1.15rem; font-weight: 500; margin: 0; flex: 1; letter-spacing: .2px; }
+  .selanno { font: inherit; font-size: .78rem; color: var(--secondary-text-color); background: transparent;
+             border: 1px solid var(--divider-color, #e0e0e0); border-radius: 8px; padding: 3px 8px;
+             cursor: pointer; max-width: 100%; }
+  .selanno:hover { color: var(--primary-text-color); border-color: var(--secondary-text-color); }
+  .selanno:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 1px; }
   .anno { font-size: .75rem; color: var(--secondary-text-color); letter-spacing: .4px;
           text-transform: uppercase; }
 
@@ -365,6 +397,9 @@ class CvvDashboardCard extends HTMLElement {
     this._datiEntita = null;
     this._nome = "";
     this._richiesta = null;
+    this._annoUtente = null;
+    this._anniServer = [];
+    this._anniMenu = [];
   }
 
   setConfig(config) {
@@ -380,6 +415,13 @@ class CvvDashboardCard extends HTMLElement {
     this._datiEntita = null;
     this._richiesta = null;
     this._nome = "";
+    this._anniServer = [];
+    this._annoUtente = this._config.selettore_anno === false ? null : leggiAnnoSalvato(this._chiaveAnno());
+  }
+
+  _chiaveAnno() {
+    const c = this._config || {};
+    return String(c.chiave_anno || c.account || c.studente || "tutti").toLowerCase();
   }
 
   getCardSize() {
@@ -416,21 +458,23 @@ class CvvDashboardCard extends HTMLElement {
       return;
     }
 
-    const impronta = `${scelto.entity.entity_id}:${scelto.anno}:${this._improntaStati(scelto.entity)}`;
+    const impronta = `${scelto.entity.entity_id}:${scelto.anno}:${scelto.remoto ? "r" : "i"}:${this._improntaStati(scelto.entity)}`;
     if (impronta === this._impronta || impronta === this._richiesta) return;
     this._impronta = impronta;
     this._richiesta = impronta;
     this._datiEntita = null;
-    this._mostraMessaggio(`Caricamento anno scolastico ${annoEtichetta(scelto.anno)}…`);
+    this._mostraMessaggio(`Caricamento anno scolastico ${annoEtichetta(scelto.anno)}…`, true);
 
     hass.callWS({
       type: "cvv_dashboard/card_data",
       entity_id: scelto.entity.entity_id,
+      ...(scelto.remoto ? { anno: scelto.anno } : {}),
     }).then((risposta) => {
       if (this._impronta !== impronta) return;
       this._richiesta = null;
       this._nome = risposta.nome || "";
       this._anno = risposta.anno;
+      this._anniServer = Array.isArray(risposta.anni) ? risposta.anni.filter(Number.isInteger) : [];
       this._datiEntita = { ...(risposta.entita || {}) };
       const esplicite = this._entita();
       for (const chiave of Object.keys(esplicite)) {
@@ -457,6 +501,12 @@ class CvvDashboardCard extends HTMLElement {
         }
         return;
       }
+      if (err && err.code === "anno_non_disponibile") {
+        // l'impronta resta: non si riprova finche' non cambia qualcosa
+        this._datiEntita = null;
+        this._mostraMessaggio(err.message || "Anno scolastico non disponibile.", true);
+        return;
+      }
       this._impronta = null;
       console.error("cvv-dashboard-card: impossibile caricare i dati dell'anno", err);
       this._mostraMessaggio("Dati dell'anno non disponibili. Verifica l'integrazione CVV Dashboard e riprova.");
@@ -480,34 +530,113 @@ class CvvDashboardCard extends HTMLElement {
       .join("|");
   }
 
-  _selezionaAnno() {
+  /** Anni offerti nel menu: quelli delle istanze configurate piu' quelli del registro. */
+  _elencoAnni() {
     const config = this._config || {};
-    const anni = anniCard(this._hass, config.account || config.studente, config.voti);
-    if (!anni.length) return null;
-    const target = annoInizio(config.anno_scolastico);
-    if (target !== null && !anni.some((item) => item.anno === target)) {
-      return { anno: target, nonDisponibile: true };
-    }
-    const selezionato = target === null ? anni[0] : anni.find((item) => item.anno === target);
-    const stati = this._hass.states;
-    const filtro = String(config.account || config.studente || "").toLowerCase();
-    let entity = config.voti &&
-      annoInizio(stati[config.voti] && stati[config.voti].attributes && stati[config.voti].attributes.anno) === selezionato.anno
-      ? stati[config.voti] : null;
-    if (!entity && (!config.voti || filtro)) {
-      const id = Object.keys(stati).find((chiave) => {
-        const ent = stati[chiave];
-        return chiave.startsWith("sensor.") && chiave.includes("cvv_dashboard") && chiave.includes("voti") &&
-          (!filtro || chiave.toLowerCase().includes(filtro)) &&
-          annoInizio(ent.attributes && ent.attributes.anno) === selezionato.anno;
-      });
-      entity = id ? stati[id] : null;
-    }
-    return entity ? { entity, anno: selezionato.anno } : { anno: selezionato.anno, nonDisponibile: true };
+    const anni = new Set(
+      anniCard(this._hass, config.account || config.studente, config.voti).map((x) => x.anno)
+    );
+    for (const anno of this._anniServer) anni.add(anno);
+    return [...anni].sort((x, y) => y - x).map((anno) => ({ anno, etichetta: annoEtichetta(anno) }));
   }
 
-  _mostraMessaggio(testo) {
-    this.shadowRoot.innerHTML = `<style>${STILE}</style><div class="cvv"><div class="vuoto" role="status">${this._esc(testo)}</div></div>`;
+  /** Anno che "Automatico" sceglie: quello in corso se c'e', altrimenti il piu' recente. */
+  _annoAutomatico(elenco) {
+    const oggi = annoDelGiorno();
+    if (elenco.some((x) => x.anno === oggi)) return oggi;
+    return elenco.length ? elenco[0].anno : null;
+  }
+
+  /** Scelta dell'utente nel menu, poi anno fisso della configurazione, poi automatico. */
+  _annoRichiesto(elenco) {
+    const fisso = annoInizio(this._config.anno_scolastico);
+    if (this._config.selettore_anno === false) return fisso;
+    if (this._annoUtente !== null) return this._annoUtente;
+    if (fisso !== null) return fisso;
+    return this._annoAutomatico(elenco);
+  }
+
+  _selezionaAnno() {
+    const config = this._config || {};
+    const istanze = anniCard(this._hass, config.account || config.studente, config.voti);
+    if (!istanze.length) return null;
+    const elenco = this._elencoAnni();
+    this._anniMenu = elenco;
+    const target = this._annoRichiesto(elenco);
+    const daIstanza = target !== null && istanze.some((item) => item.anno === target);
+    const nelRegistro = target !== null && elenco.some((item) => item.anno === target);
+    // Anno scelto dall'utente ma elenco del registro non ancora noto: si prova lo stesso,
+    // e' il server a dire se l'anno esiste.
+    const provaRemota = target !== null && !nelRegistro && this._annoUtente === target &&
+      this._anniServer.length === 0 && config.selettore_anno !== false;
+    if (target !== null && !daIstanza && !nelRegistro && !provaRemota) {
+      return { anno: target, nonDisponibile: true };
+    }
+    const anno = target === null ? istanze[0].anno : target;
+    const remoto = !istanze.some((item) => item.anno === anno);
+    const stati = this._hass.states;
+    const filtro = String(config.account || config.studente || "").toLowerCase();
+    const annoSensore = (ent) => annoInizio(ent && ent.attributes && ent.attributes.anno);
+    let entity = null;
+    if (!remoto) {
+      entity = config.voti && annoSensore(stati[config.voti]) === anno ? stati[config.voti] : null;
+      if (!entity && (!config.voti || filtro)) {
+        const id = Object.keys(stati).find((chiave) =>
+          chiave.startsWith("sensor.") && chiave.includes("cvv_dashboard") && chiave.includes("voti") &&
+          (!filtro || chiave.toLowerCase().includes(filtro)) && annoSensore(stati[chiave]) === anno);
+        entity = id ? stati[id] : null;
+      }
+    } else {
+      // Anno senza istanza: serve un sensore Voti qualsiasi dello stesso account.
+      entity = config.voti ? stati[config.voti] : null;
+      if (!entity) {
+        const id = Object.keys(stati).find((chiave) =>
+          chiave.startsWith("sensor.") && chiave.includes("cvv_dashboard") && chiave.includes("voti") &&
+          (!filtro || chiave.toLowerCase().includes(filtro)));
+        entity = id ? stati[id] : null;
+      }
+    }
+    return entity ? { entity, anno, remoto } : { anno, nonDisponibile: true };
+  }
+
+  /** Menu a tendina dell'anno, vuoto se c'e' un solo anno o se e' disattivato. */
+  _htmlSelettore() {
+    if (this._config.selettore_anno === false || this._anniMenu.length < 2) return "";
+    const oggi = annoDelGiorno();
+    const automatico = this._annoAutomatico(this._anniMenu);
+    const scelto = this._annoUtente === null ? "auto" : String(this._annoUtente);
+    const voci = [
+      `<option value="auto" ${scelto === "auto" ? "selected" : ""}>Automatico (${automatico !== null ? annoEtichetta(automatico) : "-"})</option>`,
+      ...this._anniMenu.map(({ anno, etichetta }) =>
+        `<option value="${anno}" ${scelto === String(anno) ? "selected" : ""}>${etichetta}${anno === oggi ? " · in corso" : ""}</option>`),
+    ];
+    if (scelto !== "auto" && !this._anniMenu.some((x) => String(x.anno) === scelto)) {
+      voci.push(`<option value="${scelto}" selected>${annoEtichetta(Number(scelto))}</option>`);
+    }
+    return `<select class="selanno" aria-label="Anno scolastico">${voci.join("")}</select>`;
+  }
+
+  _agganciaSelettore() {
+    const menu = this.shadowRoot.querySelector(".selanno");
+    if (!menu) return;
+    menu.addEventListener("change", () => {
+      const anno = menu.value === "auto" ? null : Number(menu.value);
+      this._annoUtente = anno;
+      salvaAnno(this._chiaveAnno(), anno);
+      this._impronta = null;
+      this._richiesta = null;
+      this._datiEntita = null;
+      if (this._hass) this.hass = this._hass;
+    });
+  }
+
+  _mostraMessaggio(testo, conSelettore = false) {
+    const selettore = conSelettore ? this._htmlSelettore() : "";
+    const testa = selettore
+      ? `<div class="testa"><h2 class="titolo">${this._esc(this._config.titolo !== undefined ? this._config.titolo : this._nome)}</h2>${selettore}</div>`
+      : "";
+    this.shadowRoot.innerHTML = `<style>${STILE}</style><div class="cvv">${testa}<div class="vuoto" role="status">${this._esc(testo)}</div></div>`;
+    this._agganciaSelettore();
   }
 
   /** Trova le entità dell'integrazione, filtrando per `account` se indicato. */
@@ -549,6 +678,7 @@ class CvvDashboardCard extends HTMLElement {
     const titolo =
       this._config.titolo !== undefined ? this._config.titolo : this._nomeStudente(ent);
     const anno = this._attr(ent.media, "anno") || this._attr(ent.voti, "anno") || "";
+    const selettore = this._htmlSelettore();
 
     const corpi = {
       medie: () => this._vistaMedie(ent),
@@ -566,10 +696,10 @@ class CvvDashboardCard extends HTMLElement {
       <style>${STILE}</style>
       <div class="cvv ${this._anima ? "anima" : ""}">
         ${
-          titolo
+          titolo || selettore
             ? `<div class="testa">
                  <h2 class="titolo">${this._esc(titolo)}</h2>
-                 ${anno ? `<span class="anno">${this._esc(anno)}</span>` : ""}
+                 ${selettore || (anno ? `<span class="anno">${this._esc(anno)}</span>` : "")}
                </div>`
             : ""
         }
@@ -591,6 +721,7 @@ class CvvDashboardCard extends HTMLElement {
       <dialog class="dettaglio"></dialog>`;
 
 
+    this._agganciaSelettore();
     this.shadowRoot.querySelectorAll(".tab").forEach((b) =>
       b.addEventListener("click", () => {
         if (b.dataset.vista === this._vista) return;  // già qui: niente da rifare
@@ -1309,7 +1440,7 @@ class CvvDashboardCardEditor extends HTMLElement {
     const years = anniCard(this._hass, this._config.account || this._config.studente, this._config.voti);
     const current = annoInizio(this._config.anno_scolastico);
     const options = [
-      `<option value="">Automatico (anno più recente)</option>`,
+      `<option value="">Automatico (anno in corso)</option>`,
       ...years.map(({ anno, etichetta }) =>
         `<option value="${anno}" ${anno === current ? "selected" : ""}>${etichetta}</option>`
       ),
@@ -1322,13 +1453,27 @@ class CvvDashboardCardEditor extends HTMLElement {
           border: 1px solid var(--input-outlined-idle-border-color, var(--divider-color));
           border-radius: 8px; background: var(--card-background-color); color: inherit; font: inherit; }
         p { margin: 8px 0 0; color: var(--secondary-text-color); font-size: .8rem; }
+        .sel { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: .9rem; cursor: pointer; }
       </style>
       <label for="anno">Anno scolastico</label>
       <select id="anno" aria-label="Anno scolastico">${options}</select>
       <p>${this._config.voti
         ? "L'anno del sensore Voti configurato è sempre disponibile. Gli altri anni richiedono un filtro account o studente."
-        : "Disponibilità basata sugli anni configurati nei sensori Voti CVV Dashboard."}</p>`;
-    this.shadowRoot.querySelector("select").addEventListener("change", (event) => {
+        : "Disponibilità basata sugli anni configurati nei sensori Voti CVV Dashboard."}</p>
+      <label class="sel"><input type="checkbox" id="sel" ${this._config.selettore_anno !== false ? "checked" : ""}>
+        Mostra il menu per cambiare anno nella card</label>`;
+    this.shadowRoot.querySelector("#sel").addEventListener("change", (event) => {
+      const next = { ...this._config };
+      if (event.target.checked) delete next.selettore_anno;
+      else next.selettore_anno = false;
+      this._config = next;
+      this.dispatchEvent(new CustomEvent("config-changed", {
+        bubbles: true,
+        composed: true,
+        detail: { config: next },
+      }));
+    });
+    this.shadowRoot.querySelector("#anno").addEventListener("change", (event) => {
       const next = { ...this._config };
       const startYear = event.target.value ? Number(event.target.value) : null;
       if (startYear) next.anno_scolastico = annoEtichetta(startYear);
@@ -1483,6 +1628,7 @@ class CvvDashboardCardPanel extends HTMLElement {
         this._card.setConfig({
           ...resto,
           account: this._scelto,
+          chiave_anno: resto.chiave_anno || "pannello",
           titolo: resto.titolo !== undefined ? resto.titolo : this._etichetta(this._scelto),
         });
         this._chiaveCard = this._scelto;
