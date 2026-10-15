@@ -81,6 +81,17 @@ Per guardare gli anni passati nella card **non serve** aggiungere l'account più
 anno preciso resta utile solo se vuoi sensori e calendari separati per quell'anno (ogni
 istanza crea un dispositivo distinto).
 
+### Cambiare password o anno
+
+- **Password cambiata sul registro:** quando il registro rifiuta la password salvata, Home Assistant
+  mostra una notifica *Riautenticazione*. Inserisci la password nuova: l'integrazione la prova,
+  verifica che l'account sia lo stesso studente e la salva, senza ricreare niente.
+- **Cambiare password o anno di un'istanza esistente:** *Impostazioni → Dispositivi e servizi →
+  CVV Dashboard → Configura*. Lascia la password vuota per tenere quella attuale. Cambiando anno,
+  entità e dispositivo mantengono gli stessi id, quindi dashboard e automazioni continuano a funzionare.
+- La password viene provata sul registro prima di essere salvata. L'integrazione rifiuta un account
+  di un altro studente e un anno già usato da un'altra istanza.
+
 ## Configurabilità della card
 
 ```yaml
@@ -161,7 +172,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.2.3
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.3.0
     config:
       vista: combo
       anno_scolastico: "26/27"

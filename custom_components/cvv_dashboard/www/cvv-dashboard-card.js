@@ -60,7 +60,7 @@
 
 // Alza questo numero a ogni modifica: compare nella console del browser e
 // serve a capire al volo se la pagina sta usando il file nuovo o quello in cache.
-const VERSIONE = "0.2.3";
+const VERSIONE = "0.3.0";
 
 const VISTE = [
   { id: "medie", nome: "Medie", icona: "◎" },

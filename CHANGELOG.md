@@ -3,6 +3,15 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.3.0 - 2026-10-15
+
+### Added
+
+- Home Assistant asks for a new password when the register rejects the saved password. You do not need to delete the integration.
+- The options of the integration change the password and the school year of one student.
+- When you change the school year, the entities and the device keep their ids. Dashboards and automations keep working.
+- The integration tests the new password before it saves the password. It refuses the login of a different student.
+
 ## 0.2.3 - 2026-10-15
 
 ### Changed
