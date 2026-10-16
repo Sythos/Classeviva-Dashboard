@@ -339,9 +339,8 @@ stato "in corso". Sopra l'elenco ci sono *Solo da leggere*, *Carica testi* e *Ag
 
 ![Selettore dell'anno scolastico](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/selettore_anno.jpeg)
 
-Il menu a tendina in alto a destra della card cambia l'anno scolastico. **Automatico** segue l'anno in
-corso; le altre voci sono gli anni disponibili. A sinistra la scheda Voti di uno studente, a destra
-l'Agenda di un altro.
+Il menu a tendina in alto a destra della card cambia l'anno scolastico. **Automatico (26/27)** segue
+l'anno in corso; sotto ci sono gli anni disponibili, per esempio **26/27 · in corso** e **25/26**.
 
 ### Calendario di Home Assistant
 
