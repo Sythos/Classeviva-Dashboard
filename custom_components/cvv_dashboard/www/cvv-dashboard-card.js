@@ -802,10 +802,12 @@ class CvvDashboardCard extends HTMLElement {
       b.addEventListener("click", async () => {
         b.disabled = true;
         b.textContent = "Apertura…";
+        // prima della chiamata: il servizio aggiorna i sensori e la card si
+        // ridisegna prima che la risposta arrivi; la comunicazione, ormai letta,
+        // non deve sparire dal filtro "solo da leggere" prima di poterla leggere
+        this._aperteOra.add(String(b.dataset.leggi));
         try {
-          // returnResponse: il testo torna qui e viene mostrato subito, senza
-          // rinfrescare la card (altrimenti la comunicazione, ormai letta,
-          // sparirebbe dal filtro "solo da leggere" prima di poterla leggere)
+          // returnResponse: il testo torna qui e viene mostrato subito
           const esito = await this._hass.callService(
             "cvv_dashboard",
             "leggi_comunicazione",
@@ -816,7 +818,6 @@ class CvvDashboardCard extends HTMLElement {
           );
           const testo = esito && esito.response && esito.response.testo;
           const box = b.closest(".com");
-          this._aperteOra.add(String(b.dataset.leggi));
           if (box) {
             box.classList.remove("nuova");
             const tag = box.querySelector(".tag.nuovo");
@@ -835,6 +836,7 @@ class CvvDashboardCard extends HTMLElement {
           }
         } catch (err) {
           console.error("cvv-dashboard-card:", err);
+          this._aperteOra.delete(String(b.dataset.leggi));
           b.textContent = "Errore.";
           b.disabled = false;
         }
