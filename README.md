@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/custom_components/cvv_dashboard/brand/icon@2x.png" width="128" height="128" alt="Icona di CVV Dashboard">
+  <img src="https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/banner.jpg" width="800" alt="CVV Dashboard: il registro ClasseViva dentro Home Assistant">
 </p>
 
 # CVV Dashboard
@@ -36,6 +36,27 @@ più pagine. La card trova da sola le entità dell'integrazione: non serve indic
 Il colore va in modo continuo dal rosso al verde in base al voto, con animazioni di
 ingresso e un layout che si adatta alla larghezza della card. Sotto i 460 px le schede
 mostrano le sole icone.
+
+## Novità dall'inizio
+
+- **0.1.0, la prima versione.** Integrazione e card in un solo pacchetto HACS: medie, voti, bacheca,
+  agenda, annotazioni, scrutini e compiti. Quattro calendari per studente in Home Assistant, servizi per
+  aggiornare i dati e leggere le comunicazioni, allegati con link firmati e una pagina a schermo intero
+  per il menu laterale.
+- **0.2.x, il selettore dell'anno scolastico.** Un menu a tendina nella card cambia anno: *Automatico*
+  segue l'anno in corso (il nuovo anno parte il 1° settembre) e la scelta resta nel browser. Gli anni
+  passati si scaricano al momento, senza un secondo login e senza aggiungere l'account più volte.
+- **0.3.0, password e anno senza ricreare niente.** Se la password cambia, Home Assistant chiede quella
+  nuova (riautenticazione). Le opzioni cambiano password e anno di uno studente e le entità mantengono gli
+  stessi id.
+- **0.4.0, voce automatica nel menu laterale.** Un interruttore nelle opzioni aggiunge la pagina CVV
+  Dashboard al menu, senza toccare `configuration.yaml` e senza riavviare. Immagini del brand più leggere.
+- **0.4.1, niente più "Errore di configurazione" all'avvio.** La card si registra appena parte Home
+  Assistant, prima che l'integrazione scarichi i dati: una pagina aperta in quel momento non perde più le card.
+- **0.4.2, bacheca.** Una comunicazione aperta perde l'etichetta "Da leggere" e resta nell'elenco dei
+  "solo da leggere" finché non cambi vista, così fai in tempo a leggerla.
+
+Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
 ## Requisiti
 
@@ -84,6 +105,15 @@ Per guardare gli anni passati nella card **non serve** aggiungere l'account più
 [Cambiare anno scolastico](#cambiare-anno-scolastico). Aggiungere lo stesso account su un
 anno preciso resta utile solo se vuoi sensori e calendari separati per quell'anno (ogni
 istanza crea un dispositivo distinto).
+
+### Accesso al registro e token
+
+- L'integrazione fa il login da sola con utente e password salvati e ottiene un **token di accesso**,
+  che il registro fa durare circa 90 minuti.
+- Quando il token **scade** (o il registro lo rifiuta) l'integrazione lo **rigenera da sola**, rifacendo
+  il login: non devi fare niente e non devi mai inserire un token. I dati si aggiornano ogni 30 minuti.
+- Il token resta solo in memoria. In Home Assistant si salvano soltanto utente e password.
+- Se la password è cambiata sul registro, il login non riesce più: parte la riautenticazione descritta qui sotto.
 
 ### Cambiare password o anno
 
@@ -282,32 +312,45 @@ Aprire una pagella da qui **non** registra la presa visione.
 
 ## Screenshot
 
-### Pagina a schermo intero nel menu laterale
-
-![Dashboard nel menu laterale](docs/screenshots/dashboard.jpeg)
-
-La voce di menu apre la dashboard a schermo intero. In alto la barra degli studenti
-(Mindy e Valeria); sotto le schede Medie, Voti, Bacheca, Agenda, Annotazioni, Scrutini e
-Compiti. Nell'esempio è aperta la **Bacheca**: comunicazioni con data, stato "in corso",
-allegati scaricabili e i pulsanti *Solo da leggere* e *Aggiorna*.
-
 ### Vista Panorama con due studenti
 
-![Vista Panorama](docs/screenshots/panoramica.jpeg)
+![Vista Panorama](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/panoramica.jpeg)
 
-Due card affiancate in una vista Panorama, una per studente, ognuna con le proprie
-schede. A sinistra l'**Agenda** di uno studente con gli eventi raggruppati per giorno; a
-destra i **Voti** di un altro, con il cerchio della media generale, la barra per materia
-e gli ultimi voti colorati in base al valore.
+Due card affiancate in una vista Panorama, una per studente, ognuna con le sue schede. Si vedono le
+**Medie**: il cerchio con la media generale e la barra del periodo. In alto a destra di ogni card c'è il
+menu dell'anno scolastico.
+
+### Voti
+
+![Scheda Voti](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/voti.jpeg)
+
+La scheda **Voti**: media generale, una barra per ogni materia con il numero di voti e gli ultimi voti,
+colorati dal rosso al verde in base al valore. In alto la barra degli studenti, a destra il menu
+dell'anno con **Automatico (26/27)**.
+
+### Bacheca
+
+![Scheda Bacheca](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/bacheca.jpeg)
+
+La scheda **Bacheca**: le comunicazioni con data, titolo, un'anteprima del testo con *Leggi tutto* e lo
+stato "in corso". Sopra l'elenco ci sono *Solo da leggere*, *Carica testi* e *Aggiorna*.
+
+### Selettore dell'anno
+
+![Selettore dell'anno scolastico](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/selettore_anno.jpeg)
+
+Il menu a tendina in alto a destra della card cambia l'anno scolastico. **Automatico** segue l'anno in
+corso; le altre voci sono gli anni disponibili. A sinistra la scheda Voti di uno studente, a destra
+l'Agenda di un altro.
 
 ### Calendario di Home Assistant
 
-![Calendario di Home Assistant](docs/screenshots/calendario.jpeg)
+![Calendario di Home Assistant](https://raw.githubusercontent.com/Sythos/Classeviva-Dashboard/main/docs/screenshots/calendario.jpeg)
 
-La pagina *Calendario* di Home Assistant con i calendari di ClasseViva. Per ogni studente
-ci sono Agenda, Compiti, Note dei docenti e Prenotazioni aula, attivabili con le caselle
-a sinistra; verifiche, note e compiti compaiono nella vista mensile, ognuno nel colore
-del proprio calendario.
+La pagina *Calendario* di Home Assistant con i calendari di ClasseViva: per ogni studente Agenda,
+Compiti, Note dei docenti e Prenotazioni aula, attivabili con le caselle a sinistra. Verifiche, note e
+compiti compaiono nella vista mensile, ognuno nel colore del proprio calendario. A sinistra, nel menu,
+la voce **CVV Dashboard**.
 
 ## Note
 
@@ -318,7 +361,7 @@ del proprio calendario.
 - Troppi tentativi di login sbagliati bloccano l'account per circa 60 minuti.
 - Alcune azioni registrano la lettura sul registro. L'integrazione le compie solo se le
   chiedi, con il servizio `leggi_comunicazione`.
-- Gli screenshot e la documentazione non fanno parte della release HACS: l'archivio
+- Il banner, gli screenshot e la documentazione non fanno parte della release HACS: l'archivio
   installato contiene solo `custom_components/cvv_dashboard`.
 
 ## Licenza
