@@ -391,6 +391,7 @@ class CvvDashboardCard extends HTMLElement {
     this._vista = null;
     this._impronta = null;
     this._espansi = new Set();
+    this._aperteOra = new Set();
     this._direzione = 0;
     this._soloNonLette = false;
     this._sottoNota = null;
@@ -758,6 +759,7 @@ class CvvDashboardCard extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-filtro]").forEach((b) =>
       b.addEventListener("click", () => {
         this._soloNonLette = !this._soloNonLette;
+        this._aperteOra.clear();
         this._direzione = 0;
         this._disegna(this._datiEntita || this._entita());
       })
@@ -800,10 +802,12 @@ class CvvDashboardCard extends HTMLElement {
       b.addEventListener("click", async () => {
         b.disabled = true;
         b.textContent = "Apertura…";
+        // prima della chiamata: il servizio aggiorna i sensori e la card si
+        // ridisegna prima che la risposta arrivi; la comunicazione, ormai letta,
+        // non deve sparire dal filtro "solo da leggere" prima di poterla leggere
+        this._aperteOra.add(String(b.dataset.leggi));
         try {
-          // returnResponse: il testo torna qui e viene mostrato subito, senza
-          // rinfrescare la card (altrimenti la comunicazione, ormai letta,
-          // sparirebbe dal filtro "solo da leggere" prima di poterla leggere)
+          // returnResponse: il testo torna qui e viene mostrato subito
           const esito = await this._hass.callService(
             "cvv_dashboard",
             "leggi_comunicazione",
@@ -814,6 +818,11 @@ class CvvDashboardCard extends HTMLElement {
           );
           const testo = esito && esito.response && esito.response.testo;
           const box = b.closest(".com");
+          if (box) {
+            box.classList.remove("nuova");
+            const tag = box.querySelector(".tag.nuovo");
+            if (tag) tag.remove();
+          }
           if (testo && box) {
             const div = document.createElement("div");
             div.className = "testo";
@@ -827,6 +836,7 @@ class CvvDashboardCard extends HTMLElement {
           }
         } catch (err) {
           console.error("cvv-dashboard-card:", err);
+          this._aperteOra.delete(String(b.dataset.leggi));
           b.textContent = "Errore.";
           b.disabled = false;
         }
@@ -1153,7 +1163,10 @@ class CvvDashboardCard extends HTMLElement {
       </div>`;
     };
 
-    const visibili = this._soloNonLette ? items.filter((c) => !c.letto) : items;
+    // le comunicazioni appena aperte restano nell'elenco finche' non si cambia filtro
+    const visibili = this._soloNonLette
+      ? items.filter((c) => !c.letto || this._aperteOra.has(String(c.pub_id)))
+      : items;
     if (!visibili.length)
       return `${barra}<div class="vuoto">Nessuna comunicazione da leggere.</div>`;
 

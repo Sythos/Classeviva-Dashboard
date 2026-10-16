@@ -389,9 +389,12 @@ def _registra_servizi(hass: HomeAssistant) -> None:
                 # Il testo viene messo nei dati in memoria ma NON si forza un
                 # aggiornamento: rinfrescare qui farebbe sparire la comunicazione
                 # dall'elenco "da leggere" nell'istante in cui la si apre, prima
-                # di poterla leggere. Lo stato si allinea al prossimo giro o
-                # premendo "Aggiorna".
+                # di poterla leggere. Il portale la segna come letta: lo stesso
+                # stato va in memoria e ai sensori, senza nuova richiesta. La card
+                # tiene visibile la comunicazione aperta finche' non si cambia vista.
                 c["text"] = testo
+                c["readStatus"] = True
+                coordinator.async_set_updated_data(coordinator.data)
                 return {
                     "titolo": c.get("cntTitle"),
                     "data": (c.get("pubDT") or "")[:10],
