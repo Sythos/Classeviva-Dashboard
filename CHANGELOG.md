@@ -3,6 +3,13 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.2 - 2026-10-16
+
+### Fixed
+
+- A notice that you open in the notice board loses the "Da Leggere" label. Before this fix, the label stayed after the register marked the notice as read.
+- The card keeps the opened notice in the "only unread" list until you change the view. You can read the text before the notice leaves the list.
+
 ## 0.4.1 - 2026-10-16
 
 ### Fixed
