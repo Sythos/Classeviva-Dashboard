@@ -3,6 +3,15 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Added
+
+- The card and the menu panel show a yellow "!" before the student name when HACS reports an update for this repository.
+- The "!" is visible only to a Home Assistant administrator.
+- A click on the "!" opens the HACS page of this repository. The "!" does not install the update.
+- The "!" changes when the state of a HACS update entity changes. The card does not poll HACS.
+
 ## 0.4.4 - 2026-10-18
 
 ### Changed

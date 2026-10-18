@@ -27,6 +27,8 @@ function nuovoContesto() {
       return this.shadowRoot;
     }
     addEventListener() {}
+    setAttribute(n, v) { (this.attributi ||= {})[n] = String(v); }
+    getAttribute(n) { return (this.attributi || {})[n]; }
   }
   const finestra = { customCards: [] };
   const contesto = {
@@ -178,4 +180,104 @@ test("two cards in one page work with a shared hass object", async () => {
   carte.forEach((c) => { c.hass = hass; });
   await new Promise((r) => setImmediate(r));
   for (const c of carte) assert.doesNotMatch(c.shadowRoot.innerHTML, /non disponibili/);
+});
+
+/** Contenitore minimo: tiene solo l'avviso HACS come primo figlio. */
+function contenitoreFinto() {
+  const c = { figli: [] };
+  c.querySelector = (sel) => c.figli.find((f) => sel === `.${f.className}`) || null;
+  c.prepend = (el) => { c.figli.unshift(el); el.remove = () => { c.figli = c.figli.filter((x) => x !== el); }; };
+  return c;
+}
+
+function hassHacs({ admin, lista, stato = "on" }) {
+  const voti = sensoreVoti();
+  const chiamate = [];
+  const hass = {
+    user: { is_admin: admin },
+    states: {
+      [voti.entity_id]: voti,
+      "update.cvv_dashboard_update": { entity_id: "update.cvv_dashboard_update", state: stato, attributes: { latest_version: "1.0" } },
+    },
+    entities: { "update.cvv_dashboard_update": { platform: "hacs" } },
+    callWS: (msg) => {
+      chiamate.push(msg.type);
+      return Promise.resolve(msg.type === "hacs/repositories/list" ? lista : RISPOSTA);
+    },
+  };
+  return { hass, chiamate };
+}
+
+function cardConAvviso(definiti) {
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  const titolo = contenitoreFinto();
+  card.shadowRoot.querySelector = (sel) => (sel === ".titolo" ? titolo : null);
+  card.setConfig({});
+  card.connectedCallback();
+  return { card, titolo };
+}
+
+const LISTA_HACS = [
+  { id: "111", full_name: "other/repo", pending_upgrade: true },
+  { id: "222", full_name: "Sythos/Classeviva-Dashboard", pending_upgrade: true },
+];
+
+test("an administrator sees the HACS alert when HACS reports an update for this repository", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass } = hassHacs({ admin: true, lista: LISTA_HACS });
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 1);
+  assert.equal(titolo.figli[0].getAttribute("aria-label"), "CVV Dashboard update available");
+});
+
+test("the HACS alert is hidden for a user who is not an administrator", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass, chiamate } = hassHacs({ admin: false, lista: LISTA_HACS });
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 0);
+  assert.ok(!chiamate.includes("hacs/repositories/list"));
+});
+
+test("an update of another HACS repository does not show the alert", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass } = hassHacs({ admin: true, lista: [LISTA_HACS[0], { ...LISTA_HACS[1], pending_upgrade: false }] });
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 0);
+});
+
+test("a state update of a HACS entity changes the alert without a reload", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const primo = hassHacs({ admin: true, lista: LISTA_HACS });
+  card.hass = primo.hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 1);
+
+  const secondo = hassHacs({ admin: true, lista: [{ ...LISTA_HACS[1], pending_upgrade: false }], stato: "off" });
+  card.hass = secondo.hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 0);
+  assert.equal(secondo.chiamate.filter((t) => t === "hacs/repositories/list").length, 1);
+});
+
+test("a failing HACS command hides the alert and does not throw", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass } = hassHacs({ admin: true, lista: LISTA_HACS });
+  const base = hass.callWS;
+  hass.callWS = (msg) => (msg.type === "hacs/repositories/list" ? Promise.reject({ code: "unknown_command" }) : base(msg));
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 0);
 });

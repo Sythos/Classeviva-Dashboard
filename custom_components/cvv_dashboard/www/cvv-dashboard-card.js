@@ -149,6 +149,15 @@ const SCALA = [
 const GIALLO = "#D7D765";
 const AZZURRO = "#A5D7FD";
 
+const STILE_AVVISO = `
+  .avviso-hacs { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+                 width: 1.35em; height: 1.35em; margin: 0 8px 0 0; padding: 0; border: none;
+                 border-radius: 50%; background: #ffc107; color: #000; font: inherit;
+                 font-size: .8em; font-weight: 700; line-height: 1; cursor: pointer;
+                 vertical-align: middle; }
+  .avviso-hacs:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+`;
+
 const STILE = `
   :host { display: block; }
 
@@ -382,7 +391,93 @@ const STILE = `
   @media (prefers-reduced-motion: reduce) {
     .anima *, .anima .corpo { animation: none !important; transition: none !important; }
   }
+  ${STILE_AVVISO}
 `;
+
+// Avviso di aggiornamento HACS: un "!" giallo prima del nome dello studente.
+const REPOSITORY_HACS = "sythos/classeviva-dashboard";
+const ETICHETTA_AVVISO = "CVV Dashboard update available";
+
+// Stato condiviso da tutte le card e dal pannello. Solo un amministratore vede l'avviso:
+// il comando HACS richiede i diritti di amministratore e solo lui può aggiornare.
+// Nessun polling: la lista HACS si rilegge quando cambia lo stato di un'entità update di HACS.
+const avvisoHacs = {
+  idRepository: null,   // id HACS di questo repository se HACS segnala un aggiornamento
+  impronta: null,
+  ascoltatori: new Set(),
+
+  _improntaDi(hass) {
+    if (!hass || !hass.user || !hass.user.is_admin) return "";
+    const stati = hass.states || {};
+    const entita = hass.entities || {};
+    const update = Object.keys(stati)
+      .filter((id) => id.startsWith("update.") && entita[id] && entita[id].platform === "hacs")
+      .map((id) => `${id}:${stati[id].state}:${(stati[id].attributes || {}).latest_version}`);
+    return `admin|${update.join("|")}`;
+  },
+
+  aggiorna(hass) {
+    const impronta = this._improntaDi(hass);
+    if (impronta === this.impronta) return;
+    this.impronta = impronta;
+    if (!impronta) {
+      this._imposta(null);
+      return;
+    }
+    let chiamata;
+    try {
+      chiamata = Promise.resolve(hass.callWS({ type: "hacs/repositories/list" }));
+    } catch (err) {
+      chiamata = Promise.reject(err);
+    }
+    chiamata.then((lista) => {
+      if (this.impronta !== impronta) return;
+      const repo = Array.isArray(lista)
+        ? lista.find((r) => r && String(r.full_name || "").toLowerCase() === REPOSITORY_HACS)
+        : null;
+      this._imposta(repo && repo.pending_upgrade && repo.id !== undefined ? String(repo.id) : null);
+    }).catch(() => {
+      // HACS assente o non raggiungibile: niente avviso, nuovo tentativo al cambio di stato.
+      if (this.impronta === impronta) this._imposta(null);
+    });
+  },
+
+  _imposta(id) {
+    if (id === this.idRepository) return;
+    this.idRepository = id;
+    this.ascoltatori.forEach((funzione) => funzione());
+  },
+
+  apri() {
+    if (!this.idRepository) return;
+    history.pushState(null, "", `/hacs/repository/${encodeURIComponent(this.idRepository)}`);
+    window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
+  },
+
+  crea() {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "avviso-hacs";
+    b.textContent = "!";
+    b.title = ETICHETTA_AVVISO;
+    b.setAttribute("aria-label", ETICHETTA_AVVISO);
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      this.apri();
+    });
+    return b;
+  },
+
+  /** Mette o toglie l'avviso come primo figlio di `contenitore`. */
+  sincronizza(contenitore) {
+    if (!contenitore) return;
+    const presente = contenitore.querySelector(".avviso-hacs");
+    if (Boolean(presente) === Boolean(this.idRepository)) return;
+    if (presente) presente.remove();
+    else contenitore.prepend(this.crea());
+  },
+};
 
 class CvvDashboardCard extends HTMLElement {
   constructor() {
@@ -433,8 +528,23 @@ class CvvDashboardCard extends HTMLElement {
     return this._config && this._config.vista === "medie" ? 4 : 8;
   }
 
+  connectedCallback() {
+    if (!this._aggiornaAvviso) this._aggiornaAvviso = () => this._sincronizzaAvviso();
+    avvisoHacs.ascoltatori.add(this._aggiornaAvviso);
+    this._sincronizzaAvviso();
+  }
+
+  disconnectedCallback() {
+    if (this._aggiornaAvviso) avvisoHacs.ascoltatori.delete(this._aggiornaAvviso);
+  }
+
+  _sincronizzaAvviso() {
+    avvisoHacs.sincronizza(this.shadowRoot.querySelector(".titolo"));
+  }
+
   set hass(hass) {
     this._hass = hass;
+    avvisoHacs.aggiorna(hass);
     const scelto = this._selezionaAnno();
     if (!scelto) {
       if (!this._config.anno_scolastico) {
@@ -652,6 +762,7 @@ class CvvDashboardCard extends HTMLElement {
       ? `<div class="testa"><h2 class="titolo">${this._esc(this._config.titolo !== undefined ? this._config.titolo : this._nome)}</h2>${selettore}</div>`
       : "";
     this.shadowRoot.innerHTML = `<style>${STILE}</style><div class="cvv">${testa}<div class="vuoto" role="status">${this._esc(testo)}</div></div>`;
+    this._sincronizzaAvviso();
     this._agganciaSelettore();
   }
 
@@ -736,7 +847,7 @@ class CvvDashboardCard extends HTMLElement {
       </div>
       <dialog class="dettaglio"></dialog>`;
 
-
+    this._sincronizzaAvviso();
     this._agganciaSelettore();
     this.shadowRoot.querySelectorAll(".tab").forEach((b) =>
       b.addEventListener("click", () => {
@@ -1569,6 +1680,9 @@ class CvvDashboardCardPanel extends HTMLElement {
           .menu:hover { background: var(--secondary-background-color); }
           :host([narrow]) .menu { display: block; }
           .studenti { display: flex; gap: 2px; height: 100%; }
+          .voce { display: flex; align-items: center; }
+          .voce .avviso-hacs { margin: 0 -10px 0 12px; }
+          ${STILE_AVVISO}
           .studente { position: relative; display: flex; align-items: center; gap: 10px; background: none;
                       border: none; color: var(--secondary-text-color); cursor: pointer; padding: 0 18px;
                       font: inherit; font-size: 1rem; white-space: nowrap;
@@ -1599,11 +1713,18 @@ class CvvDashboardCardPanel extends HTMLElement {
         if (pulsante) this._scegli(pulsante.dataset.studente);
       });
     }
+    if (!this._aggiornaAvvisi) this._aggiornaAvvisi = () => this._sincronizzaAvvisi();
+    avvisoHacs.ascoltatori.add(this._aggiornaAvvisi);
     this._aggiorna();
+  }
+
+  disconnectedCallback() {
+    if (this._aggiornaAvvisi) avvisoHacs.ascoltatori.delete(this._aggiornaAvvisi);
   }
 
   set hass(hass) {
     this._hass = hass;
+    avvisoHacs.aggiorna(hass);
     this._aggiorna();
   }
 
@@ -1690,6 +1811,9 @@ class CvvDashboardCardPanel extends HTMLElement {
   _disegnaStudenti() {
     const contenitore = this.shadowRoot.querySelector(".studenti");
     contenitore.replaceChildren(...this._studenti.map((slug) => {
+      const voce = document.createElement("div");
+      voce.className = "voce";
+      voce.setAttribute("role", "presentation");
       const b = document.createElement("button");
       b.type = "button";
       b.className = "studente";
@@ -1700,9 +1824,15 @@ class CvvDashboardCardPanel extends HTMLElement {
       iniziale.className = "iniziale";
       iniziale.textContent = nome.charAt(0).toUpperCase();
       b.append(iniziale, nome);
-      return b;
+      voce.append(b);
+      return voce;
     }));
+    this._sincronizzaAvvisi();
     this._segnaAttivo();
+  }
+
+  _sincronizzaAvvisi() {
+    this.shadowRoot.querySelectorAll(".voce").forEach((v) => avvisoHacs.sincronizza(v));
   }
 
   _segnaAttivo() {
