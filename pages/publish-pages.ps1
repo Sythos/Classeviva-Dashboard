@@ -104,7 +104,7 @@ try {
         & git -C $repoRoot worktree add --detach $publishRoot gh-pages
     }
     else {
-        & git -C $repoRoot worktree add --orphan gh-pages $publishRoot
+        & git -C $repoRoot worktree add --orphan -b gh-pages $publishRoot
     }
     if ($LASTEXITCODE -ne 0) {
         throw "Could not create a temporary gh-pages worktree."
