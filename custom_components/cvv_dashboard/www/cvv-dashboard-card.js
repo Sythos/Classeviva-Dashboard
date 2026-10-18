@@ -1272,9 +1272,17 @@ class CvvDashboardCard extends HTMLElement {
 
   _vistaAgenda(ent, soloCompiti = false) {
     const agenda = this._attr(ent.agenda, "items", []) || [];
+    // Agenda: only today and later days, in ascending order. The date is read
+    // at each render, so it is always the current local date.
+    const adesso = new Date();
+    const oggi = [
+      adesso.getFullYear(),
+      String(adesso.getMonth() + 1).padStart(2, "0"),
+      String(adesso.getDate()).padStart(2, "0"),
+    ].join("-");
     const items = soloCompiti
       ? agenda.filter((e) => (e.tipo || "").toLowerCase().startsWith("compiti"))
-      : agenda;
+      : agenda.filter((e) => (e.inizio || "").slice(0, 10) >= oggi);
     if (!items.length) {
       return `<div class="vuoto">${soloCompiti ? "Nessun compito assegnato per questo anno scolastico." : "Nessun evento in agenda."}</div>`;
     }
@@ -1285,9 +1293,10 @@ class CvvDashboardCard extends HTMLElement {
       (perGiorno[g] = perGiorno[g] || []).push(e);
     });
 
-    return Object.keys(perGiorno)
-      .sort()
-      .reverse()
+    const giorni = Object.keys(perGiorno).sort();
+    if (soloCompiti) giorni.reverse();
+
+    return giorni
       .map((g, i) => {
         const d = new Date(g + "T00:00:00");
         const etichetta = isNaN(d)
