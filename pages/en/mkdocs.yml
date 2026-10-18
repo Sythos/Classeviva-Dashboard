@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 Sythos
+# Author: Sythos <sythos@gmail.com>
+
+site_name: CVV Dashboard
+site_description: User guide for CVV Dashboard in Home Assistant.
+site_url: https://sythos.github.io/Classeviva-Dashboard/en/
+site_author: Sythos
+repo_url: https://github.com/Sythos/Classeviva-Dashboard
+repo_name: Sythos/Classeviva-Dashboard
+edit_uri: edit/main/pages/en/docs/
+
+docs_dir: docs
+site_dir: ../../.pages-build/en
+
+nav:
+  - Home: index.md
+  - Install:
+      - Home Assistant: install/home-assistant.md
+      - HACS: install/hacs.md
+      - CVV Dashboard: install/cvv-dashboard.md
+      - Lovelace card: install/lovelace.md
+  - Guide:
+      - Views and symbols: guide/features.md
+      - One student: guide/single-student.md
+      - Two or more students: guide/multiple-students.md
+      - School year: guide/school-year.md
+      - Calendars and services: guide/calendars-services.md
+      - Troubleshooting: guide/troubleshooting.md
+
+theme:
+  name: material
+  language: en
+  font:
+    text: false
+    code: false
+  palette:
+    - scheme: default
+      primary: cyan
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: cyan
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search:
+      lang:
+        - en
+
+extra:
+  alternate:
+    - name: English
+      link: /Classeviva-Dashboard/en/
+      lang: en
+    - name: Italiano
+      link: /Classeviva-Dashboard/it/
+      lang: it
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences

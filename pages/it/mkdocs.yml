@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2026 Sythos
+# Author: Sythos <sythos@gmail.com>
+
+site_name: CVV Dashboard
+site_description: Guida utente per CVV Dashboard in Home Assistant.
+site_url: https://sythos.github.io/Classeviva-Dashboard/it/
+site_author: Sythos
+repo_url: https://github.com/Sythos/Classeviva-Dashboard
+repo_name: Sythos/Classeviva-Dashboard
+edit_uri: edit/main/pages/it/docs/
+
+docs_dir: docs
+site_dir: ../../.pages-build/it
+
+nav:
+  - Inizio: index.md
+  - Installazione:
+      - Home Assistant: install/home-assistant.md
+      - HACS: install/hacs.md
+      - CVV Dashboard: install/cvv-dashboard.md
+      - Card Lovelace: install/lovelace.md
+  - Guida:
+      - Viste e simboli: guide/features.md
+      - Un solo studente: guide/single-student.md
+      - Due o più studenti: guide/multiple-students.md
+      - Anno scolastico: guide/school-year.md
+      - Calendari e servizi: guide/calendars-services.md
+      - Risoluzione dei problemi: guide/troubleshooting.md
+
+theme:
+  name: material
+  language: it
+  font:
+    text: false
+    code: false
+  palette:
+    - scheme: default
+      primary: cyan
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Attiva il tema scuro
+    - scheme: slate
+      primary: cyan
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Attiva il tema chiaro
+  features:
+    - navigation.instant
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+
+plugins:
+  - search:
+      lang:
+        - it
+
+extra:
+  alternate:
+    - name: English
+      link: /Classeviva-Dashboard/en/
+      lang: en
+    - name: Italiano
+      link: /Classeviva-Dashboard/it/
+      lang: it
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences

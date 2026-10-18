@@ -10,6 +10,8 @@
 
 [![Apri il repository in HACS su My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration)
 
+[User guide in English](https://sythos.github.io/Classeviva-Dashboard/en/) · [Guida utente in italiano](https://sythos.github.io/Classeviva-Dashboard/it/)
+
 Integrazione per **Home Assistant** che porta il registro elettronico **ClasseViva**
 (Gruppo Spaggiari) in una dashboard completa: medie, voti, bacheca, agenda, annotazioni,
 scrutini e compiti, più i calendari integrati in Home Assistant.
