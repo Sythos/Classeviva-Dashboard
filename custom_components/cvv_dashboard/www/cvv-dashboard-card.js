@@ -388,6 +388,8 @@ class CvvDashboardCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    // Una pagina che arriva prima di setConfig non deve fermare la card.
+    this._config = {};
     this._vista = null;
     this._impronta = null;
     this._espansi = new Set();
@@ -418,6 +420,8 @@ class CvvDashboardCard extends HTMLElement {
     this._nome = "";
     this._anniServer = [];
     this._annoUtente = this._config.selettore_anno === false ? null : leggiAnnoSalvato(this._chiaveAnno());
+    // Un hass arrivato prima della configurazione si rielabora con la configurazione nuova.
+    if (this._hass) this.hass = this._hass;
   }
 
   _chiaveAnno() {
@@ -466,11 +470,19 @@ class CvvDashboardCard extends HTMLElement {
     this._datiEntita = null;
     this._mostraMessaggio(`Caricamento anno scolastico ${annoEtichetta(scelto.anno)}…`, true);
 
-    hass.callWS({
-      type: "cvv_dashboard/card_data",
-      entity_id: scelto.entity.entity_id,
-      ...(scelto.remoto ? { anno: scelto.anno } : {}),
-    }).then((risposta) => {
+    // Con la connessione non ancora pronta callWS puo' fallire subito, senza promessa:
+    // l'errore segue lo stesso percorso di un errore di rete e la pagina si riprova.
+    let chiamata;
+    try {
+      chiamata = Promise.resolve(hass.callWS({
+        type: "cvv_dashboard/card_data",
+        entity_id: scelto.entity.entity_id,
+        ...(scelto.remoto ? { anno: scelto.anno } : {}),
+      }));
+    } catch (err) {
+      chiamata = Promise.reject(err);
+    }
+    chiamata.then((risposta) => {
       if (this._impronta !== impronta) return;
       this._richiesta = null;
       this._nome = risposta.nome || "";
@@ -646,7 +658,7 @@ class CvvDashboardCard extends HTMLElement {
   /** Trova le entità dell'integrazione, filtrando per `account` se indicato. */
   _entita() {
     const cfg = this._config || {};
-    const stati = this._hass ? this._hass.states : {};
+    const stati = (this._hass && this._hass.states) || {};
     const filtro = String(cfg.account || cfg.studente || "").toLowerCase();
 
     const cerca = (dominio, parola, esplicita) => {
