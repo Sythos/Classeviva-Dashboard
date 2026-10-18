@@ -91,6 +91,17 @@ test("a hass object that arrives before setConfig does not throw", () => {
   assert.doesNotThrow(() => { card.hass = { states: {} }; });
 });
 
+test("a hass object that arrives before setConfig is processed after setConfig", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  card.hass = hassCon(() => Promise.resolve(RISPOSTA));
+  card.setConfig({});
+  await new Promise((r) => setImmediate(r));
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /Caricamento anno/);
+  assert.doesNotMatch(card.shadowRoot.innerHTML, /non disponibili/);
+});
+
 test("a hass object without states does not throw", () => {
   const { contesto, definiti } = nuovoContesto();
   carica(contesto);

@@ -420,6 +420,8 @@ class CvvDashboardCard extends HTMLElement {
     this._nome = "";
     this._anniServer = [];
     this._annoUtente = this._config.selettore_anno === false ? null : leggiAnnoSalvato(this._chiaveAnno());
+    // Un hass arrivato prima della configurazione si rielabora con la configurazione nuova.
+    if (this._hass) this.hass = this._hass;
   }
 
   _chiaveAnno() {
