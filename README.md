@@ -6,7 +6,7 @@
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![Versione](https://img.shields.io/github/v/release/Sythos/Classeviva-Dashboard?label=versione&style=flat)](https://github.com/Sythos/Classeviva-Dashboard/releases)
-[![Licenza MIT](https://img.shields.io/github/license/Sythos/Classeviva-Dashboard?label=licenza&style=flat)](LICENSE)
+[![Validation](https://github.com/Sythos/Classeviva-Dashboard/actions/workflows/validate.yml/badge.svg?branch=main&event=push)](https://github.com/Sythos/Classeviva-Dashboard/actions/workflows/validate.yml)
 
 [![Apri il repository in HACS su My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration)
 
