@@ -3,6 +3,14 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.3 - 2026-10-18
+
+### Fixed
+
+- The card no longer shows "Errore di configurazione" when the page gives the Home Assistant data to the card early or in part. This can happen on the first direct load of a dashboard.
+- The card keeps the Home Assistant data that arrives before the configuration. It uses the data again after the configuration is set.
+- The card handles a data request that fails at once, when the connection is not ready. It shows the normal error and tries again.
+
 ## 0.4.2 - 2026-10-16
 
 ### Fixed
