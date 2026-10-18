@@ -1272,9 +1272,20 @@ class CvvDashboardCard extends HTMLElement {
 
   _vistaAgenda(ent, soloCompiti = false) {
     const agenda = this._attr(ent.agenda, "items", []) || [];
+    // Agenda: only today and later days, in ascending order. The date is read
+    // at each render, so it is always the current local date. A school year that
+    // is already over keeps all its days.
+    const adesso = new Date();
+    const oggi = [
+      adesso.getFullYear(),
+      String(adesso.getMonth() + 1).padStart(2, "0"),
+      String(adesso.getDate()).padStart(2, "0"),
+    ].join("-");
+    const annoVisto = annoInizio(this._attr(ent.media, "anno") || this._attr(ent.voti, "anno"));
+    const annoPassato = annoVisto !== null && annoVisto < annoDelGiorno(adesso);
     const items = soloCompiti
       ? agenda.filter((e) => (e.tipo || "").toLowerCase().startsWith("compiti"))
-      : agenda;
+      : agenda.filter((e) => annoPassato || (e.inizio || "").slice(0, 10) >= oggi);
     if (!items.length) {
       return `<div class="vuoto">${soloCompiti ? "Nessun compito assegnato per questo anno scolastico." : "Nessun evento in agenda."}</div>`;
     }
@@ -1285,9 +1296,15 @@ class CvvDashboardCard extends HTMLElement {
       (perGiorno[g] = perGiorno[g] || []).push(e);
     });
 
-    return Object.keys(perGiorno)
-      .sort()
-      .reverse()
+    // The sensor sends the newest events first: order the events of each day by time.
+    Object.values(perGiorno).forEach((lista) =>
+      lista.sort((a, b) => (a.inizio || "").localeCompare(b.inizio || ""))
+    );
+
+    const giorni = Object.keys(perGiorno).sort();
+    if (soloCompiti) giorni.reverse();
+
+    return giorni
       .map((g, i) => {
         const d = new Date(g + "T00:00:00");
         const etichetta = isNaN(d)
