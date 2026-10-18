@@ -10,6 +10,11 @@ The school year starts on 1 September and ends on 31 August.
 
 The year menu appears when the card can use more than one year. Select an available year, such as `25/26`. The selection stays in the browser.
 
+<figure markdown>
+  ![The school year menu with the automatic option and available school years.](../assets/images/selettore_anno.jpeg)
+  <figcaption>Example 1. Select Automatico to follow the current school year, or select an available year.</figcaption>
+</figure>
+
 The card can load another year when you select it. It uses the existing login and keeps the data in cache for 30 minutes. The first load of an old year can take a few seconds.
 
 Use one of these formats in configuration:

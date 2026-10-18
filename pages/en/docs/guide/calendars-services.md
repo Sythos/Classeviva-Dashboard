@@ -13,6 +13,11 @@ CVV Dashboard adds sensors and four calendars for each configured student.
 
 Enable calendars in **Calendar** in Home Assistant. You can also use their entity IDs in a Lovelace Calendar card. Find the exact IDs in **Developer tools > States**.
 
+<figure markdown>
+  ![Home Assistant Calendar with events from the selected CVV Dashboard student calendars.](../assets/images/calendario.jpeg)
+  <figcaption>Example 1. Home Assistant Calendar can show events from the CVV Dashboard calendars that you enable.</figcaption>
+</figure>
+
 ## Sensors
 
 | Sensor | Data |

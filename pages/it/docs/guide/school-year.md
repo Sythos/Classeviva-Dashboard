@@ -10,6 +10,11 @@ L'anno scolastico inizia il 1° settembre e termina il 31 agosto.
 
 Il menu dell'anno compare quando la card può usare più di un anno. Seleziona un anno disponibile, per esempio `25/26`. La scelta resta nel browser.
 
+<figure markdown>
+  ![Il menu dell'anno scolastico con l'opzione automatica e gli anni disponibili.](../assets/images/selettore_anno.jpeg)
+  <figcaption>Esempio 1. Seleziona Automatico per seguire l'anno scolastico in corso oppure scegli un anno disponibile.</figcaption>
+</figure>
+
 Quando selezioni un altro anno, la card può caricarne i dati. Usa il login già attivo e mantiene i dati in cache per 30 minuti. Il primo caricamento di un anno passato può richiedere alcuni secondi.
 
 Puoi usare uno di questi formati nella configurazione:

@@ -14,6 +14,22 @@ CVV Dashboard uses Italian labels because these are the labels in the card. The 
 | ★ | Scrutini | Published report cards. Download a report card from the card. |
 | 📝 | Compiti | Homework by date. |
 
+## Examples
+
+The Grades view shows the general average, subject results, and recent marks.
+
+<figure markdown>
+  ![Example of the Grades view with the general average, subject results, and recent marks.](../assets/images/voti.jpeg)
+  <figcaption>Example 1. The Grades view shows the general average, subject results, and recent marks.</figcaption>
+</figure>
+
+The Bacheca view shows school notices. Use **Solo da leggere** to filter unread notices. Use **Carica testi** to load notice text without changing its read state.
+
+<figure markdown>
+  ![Example of the Bacheca view with school notices and its controls.](../assets/images/bacheca.jpeg)
+  <figcaption>Example 2. The Bacheca view shows school notices and the controls to filter or load their text.</figcaption>
+</figure>
+
 The `vista` value `combo` shows all available views. The value `note` opens **Annotazioni**. This view has two subviews:
 
 - **Annotazioni**: comments from teachers.

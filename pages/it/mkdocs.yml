@@ -18,8 +18,8 @@ nav:
   - Installazione:
       - Home Assistant: install/home-assistant.md
       - HACS: install/hacs.md
-      - CVV Dashboard: install/cvv-dashboard.md
       - Card Lovelace: install/lovelace.md
+      - CVV Dashboard: install/cvv-dashboard.md
   - Guida:
       - Viste e simboli: guide/features.md
       - Un solo studente: guide/single-student.md
@@ -35,18 +35,18 @@ theme:
     text: false
     code: false
   palette:
-    - scheme: default
-      primary: cyan
-      accent: light blue
-      toggle:
-        icon: material/brightness-7
-        name: Attiva il tema scuro
     - scheme: slate
       primary: cyan
       accent: light blue
       toggle:
-        icon: material/brightness-4
+        icon: material/brightness-7
         name: Attiva il tema chiaro
+    - scheme: default
+      primary: cyan
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Attiva il tema scuro
   features:
     - navigation.instant
     - navigation.indexes

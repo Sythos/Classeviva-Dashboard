@@ -13,6 +13,11 @@ CVV Dashboard aggiunge sensori e quattro calendari per ogni studente configurato
 
 Attiva i calendari in **Calendario** in Home Assistant. Puoi usare i loro ID anche in una card Calendario Lovelace. Trova gli ID esatti in **Strumenti per sviluppatori > Stati**.
 
+<figure markdown>
+  ![Calendario Home Assistant con gli eventi dei calendari CVV Dashboard selezionati.](../assets/images/calendario.jpeg)
+  <figcaption>Esempio 1. Calendario Home Assistant può mostrare gli eventi dei calendari CVV Dashboard che attivi.</figcaption>
+</figure>
+
 ## Sensori
 
 | Sensore | Dati |

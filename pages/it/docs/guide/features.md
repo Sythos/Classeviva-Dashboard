@@ -14,6 +14,22 @@ CVV Dashboard usa etichette in italiano, come nella card. I simboli restano acca
 | ★ | Scrutini | Pagelle e pagellini pubblicati. Puoi scaricarli dalla card. |
 | 📝 | Compiti | Compiti assegnati, per data. |
 
+## Esempi
+
+La vista Voti mostra la media generale, i risultati per materia e i voti recenti.
+
+<figure markdown>
+  ![Esempio della vista Voti con la media generale, i risultati per materia e i voti recenti.](../assets/images/voti.jpeg)
+  <figcaption>Esempio 1. La vista Voti mostra la media generale, i risultati per materia e i voti recenti.</figcaption>
+</figure>
+
+La vista Bacheca mostra le comunicazioni scolastiche. Usa **Solo da leggere** per filtrare le comunicazioni non lette. Usa **Carica testi** per caricare i testi senza cambiarne lo stato di lettura.
+
+<figure markdown>
+  ![Esempio della vista Bacheca con le comunicazioni scolastiche e i relativi comandi.](../assets/images/bacheca.jpeg)
+  <figcaption>Esempio 2. La vista Bacheca mostra le comunicazioni scolastiche e i comandi per filtrare o caricare i testi.</figcaption>
+</figure>
+
 Il valore `vista` `combo` mostra tutte le viste disponibili. Il valore `note` apre **Annotazioni**. Questa vista ha due sottoviste:
 
 - **Annotazioni**: commenti dei docenti.

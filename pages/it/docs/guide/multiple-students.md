@@ -29,6 +29,13 @@ cards:
     vista: combo
 ~~~
 
+Questo esempio mostra due card studente nella stessa dashboard:
+
+<figure markdown>
+  ![Due card CVV Dashboard nella stessa dashboard Home Assistant, una per ogni studente.](../assets/images/panoramica.jpeg)
+  <figcaption>Esempio 1. Ogni card mostra i dati di uno studente. Puoi aggiungere card per altri studenti nella stessa dashboard.</figcaption>
+</figure>
+
 Puoi impostare una `vista` diversa per ogni card. Per esempio, mostra `agenda` per uno studente e `voti` per l'altro.
 
 ## Usa il pannello a tutto schermo

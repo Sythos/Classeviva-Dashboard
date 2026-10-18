@@ -29,6 +29,13 @@ cards:
     vista: combo
 ~~~
 
+This example shows two student cards on the same dashboard:
+
+<figure markdown>
+  ![Two CVV Dashboard cards on one Home Assistant dashboard, one for each student.](../assets/images/panoramica.jpeg)
+  <figcaption>Example 1. Each card shows the data for one student. You can place cards for more students in the same dashboard.</figcaption>
+</figure>
+
 You can set a different `vista` on each card. For example, show `agenda` for one student and `voti` for another.
 
 ## Use the full-screen student panel
