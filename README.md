@@ -57,6 +57,7 @@ mostrano le sole icone.
   "solo da leggere" finché non cambi vista, così fai in tempo a leggerla.
 - **0.4.3, primo caricamento.** La card non mostra più "Errore di configurazione" se la pagina le passa i dati
   di Home Assistant troppo presto o in parte.
+- **0.4.4, agenda.** L'agenda mostra gli eventi da oggi in poi, in ordine di data e di ora. Le date passate sono nascoste.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
@@ -214,7 +215,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.3
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.4
     config:
       vista: combo
       anno_scolastico: "26/27"
