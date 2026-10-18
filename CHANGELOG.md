@@ -3,6 +3,15 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.4 - 2026-10-18
+
+### Changed
+
+- The Agenda shows all events from today, then the events of the future dates, in ascending date order. It hides the earlier dates.
+- The Agenda calculates the date again when the data refreshes.
+- The Agenda sorts the events of one day by time.
+- The Agenda of a past school year stays complete.
+
 ## 0.4.3 - 2026-10-18
 
 ### Fixed
