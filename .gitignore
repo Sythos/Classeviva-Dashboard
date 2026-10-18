@@ -14,9 +14,8 @@
 Thumbs.db
 .DS_Store
 
-# Local PowerShell helper scripts (never distributed with the client)
+# Keep local PowerShell helper scripts out of the repository.
 *.ps1
-!pages/publish-pages.ps1
 
 # Local documentation build output
 /.pages-build/

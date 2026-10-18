@@ -132,6 +132,8 @@ istanza crea un dispositivo distinto).
 - La password viene provata sul registro prima di essere salvata. L'integrazione rifiuta un account
   di un altro studente e un anno già usato da un'altra istanza.
 
+For full installation and configuration steps, see the [user guide](https://sythos.github.io/Classeviva-Dashboard/).
+
 ## Configurabilità della card
 
 ```yaml
