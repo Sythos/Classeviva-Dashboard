@@ -1,8 +1,8 @@
-# Pages source and manual publishing
+# Pages source and publishing
 
-The public site uses Material for MkDocs. English source files are in pages/en/docs/. Italian pages are translations of the English source and are in pages/it/docs/.
+The public site uses Material for MkDocs. English source files are in `pages/en/docs/`. Italian pages are translations of the English source and are in `pages/it/docs/`.
 
-The release workflow creates cvv_dashboard.zip from custom_components/cvv_dashboard/. The documentation source and the Pages build are outside this folder. They do not enter the HACS release archive.
+The release workflow builds both language sites when a version tag is pushed. It then creates the release, creates and verifies a signed provenance attestation for `cvv_dashboard.zip`, and deploys the two sites to GitHub Pages. The HACS archive still contains only `custom_components/cvv_dashboard/`.
 
 ## Install the documentation tools
 
@@ -12,28 +12,21 @@ From the repository root, run:
 python -m pip install -r pages/requirements.txt
 ~~~
 
-## Build and preview
+## Build the site
 
-To build both languages without a push, run:
+To build both languages on your computer, run:
 
 ~~~powershell
 .\pages\publish-pages.ps1 -BuildOnly
 ~~~
 
-The combined site is in .pages-build/site/. Open index.html to check the language links.
+The combined site is in `.pages-build/site/`. Open `index.html` to check the language links. The local PowerShell helper is ignored by Git and must stay on this computer.
 
-## Publish by hand
+## Publish the first site
 
-1. Edit the English pages first.
-2. Translate each change in the matching Italian page.
-3. Commit and push the changes to main.
-4. Wait for main to contain the commit. Keep the working tree clean.
-5. Run this command from the repository root:
+1. Set the Pages source to **GitHub Actions** in the repository settings.
+2. Open **Actions** and select **Release**.
+3. Select **Run workflow** and choose `main`.
+4. Wait for the workflow to deploy the site.
 
-~~~powershell
-.\pages\publish-pages.ps1
-~~~
-
-The script builds both sites and pushes the combined output to gh-pages. It does not create a GitHub Actions workflow. A push to main or a release does not publish the site.
-
-For the first publish, set the repository Pages source to branch gh-pages and folder / in Settings > Pages. GitHub Pages then serves the files from that branch. The site URL is https://sythos.github.io/Classeviva-Dashboard/.
+This manual run builds and deploys the guide. It does not create a release. Future version tags create a release and deploy the guide in the same workflow. The site URL is `https://sythos.github.io/Classeviva-Dashboard/`.

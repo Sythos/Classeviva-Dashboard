@@ -28,30 +28,137 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
-    name: Build and publish
+  build-pages:
+    name: Build bilingual guide
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
-      - uses: actions/checkout@v5
-      - name: Check that the tag matches the manifest version
+      - name: Check out the source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Install the guide tools
+        run: python -m pip install --disable-pip-version-check -r pages/requirements.txt
+
+      - name: Build the English guide
+        run: python -m mkdocs build --strict --config-file pages/en/mkdocs.yml
+
+      - name: Build the Italian guide
+        run: python -m mkdocs build --strict --config-file pages/it/mkdocs.yml
+
+      - name: Prepare the Pages site
+        shell: bash
         run: |
+          set -euo pipefail
+          mkdir -p .pages-build/site/en .pages-build/site/it
+          cp -R .pages-build/en/. .pages-build/site/en/
+          cp -R .pages-build/it/. .pages-build/site/it/
+          cat > .pages-build/site/index.html <<'EOF'
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=./en/">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>CVV Dashboard</title>
+            </head>
+            <body>
+              <p><a href="./en/">English</a> · <a href="./it/">Italiano</a></p>
+            </body>
+          </html>
+          EOF
+          touch .pages-build/site/.nojekyll
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: .pages-build/site
+
+  release:
+    name: Build, attest, and publish the release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build-pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check that the tag matches the manifest version
+        shell: bash
+        run: |
+          set -euo pipefail
           version=$(python3 -c "import json; print(json.load(open('custom_components/cvv_dashboard/manifest.json'))['version'])")
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "Tag ${GITHUB_REF_NAME} does not match manifest version ${version}"
+          if [[ "v${version}" != "${GITHUB_REF_NAME}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match manifest version ${version}" >&2
             exit 1
           fi
+
       - name: Write the release notes from the changelog
         run: bash .github/scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > release-notes.md
-      - name: Build the archive
+
+      - name: Build the HACS archive
         run: |
           cd custom_components/cvv_dashboard
           zip -r ../../cvv_dashboard.zip . -x "*__pycache__*"
+
+      - name: Generate the signed provenance attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: "${{ github.workspace }}/cvv_dashboard.zip"
+          create-storage-record: false
+          show-summary: true
+
+      - name: Verify the signed provenance attestation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh attestation verify cvv_dashboard.zip --repo "${GITHUB_REPOSITORY}"
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${GITHUB_REF_NAME}" cvv_dashboard.zip --title "CVV Dashboard ${GITHUB_REF_NAME}" --notes-file release-notes.md
+        run: gh release create "${GITHUB_REF_NAME}" cvv_dashboard.zip --verify-tag --title "CVV Dashboard ${GITHUB_REF_NAME}" --notes-file release-notes.md
+
+  deploy-pages:
+    name: Deploy the bilingual guide
+    if: always() && needs.build-pages.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success')
+    needs:
+      - build-pages
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
