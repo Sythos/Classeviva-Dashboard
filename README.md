@@ -55,6 +55,8 @@ mostrano le sole icone.
   Assistant, prima che l'integrazione scarichi i dati: una pagina aperta in quel momento non perde più le card.
 - **0.4.2, bacheca.** Una comunicazione aperta perde l'etichetta "Da leggere" e resta nell'elenco dei
   "solo da leggere" finché non cambi vista, così fai in tempo a leggerla.
+- **0.4.3, primo caricamento.** La card non mostra più "Errore di configurazione" se la pagina le passa i dati
+  di Home Assistant troppo presto o in parte.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
@@ -212,7 +214,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.2
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.3
     config:
       vista: combo
       anno_scolastico: "26/27"
