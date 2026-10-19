@@ -66,6 +66,10 @@ Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
 ## Requisiti
 
+> **Login requirement:** CVV Dashboard uses the standard ClasseViva user name and password. It works only if your school allows this login method. It does not work if your school requires SPID or CIE.
+>
+> **Requisito di accesso:** CVV Dashboard usa l'accesso standard a ClasseViva con nome utente e password. Funziona solo se l'istituto consente questo metodo e non impone l'accesso tramite SPID o CIE.
+
 > **HACS deve essere già installato** in Home Assistant. Questa integrazione si installa
 > solo tramite HACS: senza HACS segui la procedura manuale più sotto.
 

@@ -17,6 +17,10 @@ Usa HACS per installare CVV Dashboard. L'integrazione installa anche la card Lov
 
 Puoi anche usare il [collegamento My Home Assistant](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration) per aprire il repository in HACS.
 
+!!! warning "Requisito di accesso"
+
+    CVV Dashboard usa l'accesso standard a ClasseViva con nome utente e password. Funziona solo se l'istituto consente questo metodo. Non funziona se l'istituto impone l'accesso tramite SPID o CIE.
+
 ## Aggiungi l'integrazione
 
 1. Apri **Impostazioni > Dispositivi e servizi**.

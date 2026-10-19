@@ -17,6 +17,10 @@ Use HACS to install CVV Dashboard. The integration also installs the Lovelace ca
 
 You can also use the [My Home Assistant link](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration) to open the repository in HACS.
 
+!!! warning "Login requirement"
+
+    CVV Dashboard uses the standard ClasseViva user name and password. It works only if your school allows this login method. It does not work if your school requires SPID or CIE.
+
 ## Add the integration
 
 1. Open **Settings > Devices & services**.
