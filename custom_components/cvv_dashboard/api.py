@@ -389,20 +389,31 @@ class CvvDashboardApi:
             if not self.colloqui_possibili:
                 return "non_disponibile", []
 
-        base = f"/rest/v1/parents/{self.student_id}/talks"
         periodo = f"{formato_richiesta(inizio)}/{formato_richiesta(fine)}"
-        status, slot = await self._get(BASE_HOST, f"{base}/teachersframes2/{periodo}", self.token)
+        for tentativo in (1, 2):
+            base = f"/rest/v1/parents/{self.student_id}/talks"
+            status, slot = await self._get(
+                BASE_HOST, f"{base}/teachersframes2/{periodo}", self.token
+            )
+            if status in (401, 403) and tentativo == 1:
+                # Puo' essere il token scaduto: rifai il login e riprova una volta.
+                self.token = None
+                self.token_ap = None
+                await self.login()
+                continue
+            break
         if status in (401, 403, 404):
             return "non_disponibile", []
         if status != 200:
             _LOGGER.debug("Colloqui: richiesta degli slot fallita (%s)", status)
             return "errore", []
 
-        # I colloqui prenotati arricchiscono gli slot: se falliscono restano gli slot.
+        # Senza i colloqui prenotati uno slot prenotato sembrerebbe libero: in quel
+        # caso l'esito e' un errore e l'aggiornamento tiene l'elenco precedente.
         status, prenotati = await self._get(BASE_HOST, f"{base}/mytalks/{periodo}", self.token)
         if status != 200:
             _LOGGER.debug("Colloqui: richiesta dei prenotati fallita (%s)", status)
-            prenotati = None
+            return "errore", []
         return "ok", unisci(slot, prenotati)
 
     async def leggi_comunicazione(self, evt: str, pub: str | int) -> str | None:

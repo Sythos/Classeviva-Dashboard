@@ -1412,14 +1412,11 @@ class CvvDashboardCard extends HTMLElement {
   _vistaColloqui(ent) {
     const tutti = this._attr(ent.colloqui, "items", []) || [];
     const stato = this._attr(ent.colloqui, "stato_dati", "");
-    // Oggi e i 27 giorni dopo, con la data locale letta a ogni disegno.
-    const iso = (d) =>
-      [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-");
-    const adesso = new Date();
-    const primo = iso(adesso);
-    const ultimo = iso(new Date(adesso.getFullYear(), adesso.getMonth(), adesso.getDate() + 27));
+    // Stesso intervallo del server (fuso di Home Assistant): attributi `dal` e `al`.
+    const primo = this._attr(ent.colloqui, "dal", "") || "";
+    const ultimo = this._attr(ent.colloqui, "al", "") || "";
     const items = tutti
-      .filter((c) => (c.data || "") >= primo && (c.data || "") <= ultimo)
+      .filter((c) => (!primo || (c.data || "") >= primo) && (!ultimo || (c.data || "") <= ultimo))
       .sort((a, b) =>
         `${a.data || ""} ${a.ora_inizio || ""}`.localeCompare(`${b.data || ""} ${b.ora_inizio || ""}`)
       );

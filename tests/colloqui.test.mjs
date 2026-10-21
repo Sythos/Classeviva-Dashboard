@@ -40,7 +40,7 @@ function nuovaScheda(items, stato = "ok") {
   vm.runInContext(`(function () {\n${CODICE}\n})();`, contesto, { filename: FILE });
   const card = new (definiti.get("cvv-dashboard-card"))();
   card.setConfig({ vista: "colloqui" });
-  const ent = { colloqui: { state: "1", attributes: { items, stato_dati: stato } } };
+  const ent = { colloqui: { state: "1", attributes: { items, stato_dati: stato, dal: giorno(0), al: giorno(27) } } };
   return { card, ent };
 }
 
