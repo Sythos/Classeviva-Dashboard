@@ -34,6 +34,7 @@ più pagine. La card trova da sola le entità dell'integrazione: non serve indic
 | **Annotazioni** | Annotazioni dei docenti e note disciplinari |
 | **Scrutini** | Pagelle e pagellini pubblicati, scaricabili |
 | **Compiti** | Compiti assegnati, raggruppati per giorno |
+| **Assenze e Ritardi** | Assenze, ritardi e uscite dell'anno, dalla più recente; verde se giustificate, rosso se da giustificare (in sola lettura) |
 | **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore); i colloqui prenotati si aprono per vedere aula e link |
 
 Il colore va in modo continuo dal rosso al verde in base al voto, con animazioni di
@@ -149,7 +150,7 @@ Opzioni comuni:
 
 | Opzione | Valori | Default |
 |---|---|---|
-| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui`, `combo` | `combo` |
+| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `assenze`, `colloqui`, `combo` | `combo` |
 | `account` | parte dell'entity_id, se hai più studenti | — |
 | `anno_scolastico` | anno configurato, ad esempio `"26/27"` | più recente |
 | `titolo` | testo dell'intestazione (`""` per nasconderla) | nome dello studente |

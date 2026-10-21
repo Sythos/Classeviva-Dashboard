@@ -40,6 +40,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
+from .absences import ordina as ordina_assenze
 from .api import parse_anno
 from .const import DOMAIN
 from .coordinator import CvvDashboardCoordinator
@@ -87,6 +88,7 @@ NOTE_LIMIT = 40
 NOTE_TESTO_MAX = 300
 SCRUTINI_LIMIT = 20
 TALKS_LIMIT = 40
+ABSENCES_LIMIT = 60
 
 
 def _in_school_year(value, year_start: int) -> bool:
@@ -113,6 +115,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             ScrutiniSensor(coordinator, eid),
             AgendaSensor(coordinator, eid),
             TalksSensor(coordinator, eid),
+            AbsencesSensor(coordinator, eid),
         ]
     )
 
@@ -642,6 +645,37 @@ class TalksSensor(_Base):
         }
 
 
+class AbsencesSensor(_Base):
+    """Assenze, ritardi e uscite: solo lettura. Lo stato conta quelle da giustificare."""
+
+    _key = "absences"
+    _label = "Assenze e ritardi"
+    _icon = "mdi:calendar-remove"
+
+    def _voci(self, year_start: int | None = None) -> list[dict]:
+        voci = [v for v in self._data.get("assenze") or [] if isinstance(v, dict)]
+        if year_start is not None:
+            voci = [v for v in voci if _in_school_year(v.get("data"), year_start)]
+        return ordina_assenze(voci)
+
+    @property
+    def native_value(self):
+        return sum(1 for v in self._voci() if not v.get("giustificata"))
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes(limit=ABSENCES_LIMIT)
+
+    def _attributes(self, limit: int | None = ABSENCES_LIMIT, year_start: int | None = None) -> dict:
+        voci = self._voci(year_start)
+        return {
+            "anno": self._data.get("grades_year"),
+            "totale": len(voci),
+            "da_giustificare": sum(1 for v in voci if not v.get("giustificata")),
+            "items": voci if limit is None else voci[:limit],
+        }
+
+
 def anno_effettivo(coordinator: CvvDashboardCoordinator) -> int | None:
     """Anno di inizio dei dati del coordinatore: quello scelto, o quello letto dai dati."""
     if coordinator.anno is not None:
@@ -755,6 +789,9 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
     )
 
     talks_attributes = talks_sensor._attributes(limit=None, completo=True)
+    absences_attributes = AbsencesSensor(coordinator, entry_id)._attributes(
+        limit=None, year_start=year_start
+    )
 
     return {
         "nome": coordinator.first_name,
@@ -776,6 +813,10 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
             "colloqui": {
                 "state": talks_attributes["prenotati"],
                 "attributes": talks_attributes,
+            },
+            "assenze": {
+                "state": absences_attributes["da_giustificare"],
+                "attributes": absences_attributes,
             },
         },
     }

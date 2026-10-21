@@ -145,7 +145,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     _SEZIONI = (
         "voti", "medie_materia", "medie_periodo", "periodi", "media", "grades_year",
         "agenda", "note_web", "scrutini", "noticeboard", "didactics", "notes",
-        "colloqui",
+        "colloqui", "assenze",
     )
 
     def _conserva_precedenti(self, data: dict) -> None:
@@ -161,6 +161,9 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
             # i colloqui si tengono solo dopo una richiesta fallita: un elenco
             # vuoto ma valido significa che non ci sono piu' slot
             if chiave == "colloqui" and data.get("colloqui_stato") != "errore":
+                continue
+            # le assenze si tengono solo dopo una richiesta fallita, non per un elenco vuoto valido
+            if chiave == "assenze" and data.get("assenze_stato") != "errore":
                 continue
             if not data.get(chiave) and vecchi.get(chiave):
                 data[chiave] = vecchi[chiave]

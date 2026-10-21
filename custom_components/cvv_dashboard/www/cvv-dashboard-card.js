@@ -33,7 +33,7 @@
  *        type: custom:cvv-dashboard-card
  *
  * Opzioni comuni:
- *   vista       medie | voti | bacheca | agenda | note | scrutini | compiti | colloqui | combo
+ *   vista       medie | voti | bacheca | agenda | note | scrutini | compiti | assenze | colloqui | combo
  *   account     parte dell'entity_id, se hai piu' studenti
  *   anno_scolastico  anno selezionato, per esempio "26/27"; senza valore usa il più recente
  *   titolo      testo dell'intestazione ("" per nasconderla)
@@ -70,6 +70,7 @@ const VISTE = [
   { id: "note", nome: "Annotazioni", icona: "✎" },
   { id: "scrutini", nome: "Scrutini", icona: "★" },
   { id: "compiti", nome: "Compiti", icona: "📝" },
+  { id: "assenze", nome: "Assenze e Ritardi", icona: "⏱" },
   { id: "colloqui", nome: "Colloqui", icona: "☎" },
 ];
 
@@ -184,11 +185,14 @@ const STILE = `
           text-transform: uppercase; }
 
   /* ---------- schede ---------- */
-  .tabs { position: relative; display: flex; gap: 2px; padding: 14px 12px 0;
+  /* Gap e padding si stringono con la larghezza: prima si riduce lo spazio,
+     poi restano le sole icone, e solo alla fine compare lo scorrimento. */
+  .tabs { position: relative; display: flex; gap: clamp(0px, calc((100cqw - 400px) / 40), 2px);
+          padding: 14px 12px 0;
           border-bottom: 1px solid var(--divider-color); overflow-x: auto;
           scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab { --pad: 14px;
+  .tab { --pad: clamp(6px, calc((100cqw - 500px) / 8), 14px);
          position: relative; background: none; border: none; color: var(--secondary-text-color);
          cursor: pointer; padding: 9px var(--pad) 11px; font-size: .88rem; font-family: inherit;
          white-space: nowrap; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 6px;
@@ -207,7 +211,7 @@ const STILE = `
   /* Card stretta (colonna del layout Masonry): restano le sole icone, così le
      schede ci stanno tutte invece di finire fuori dal bordo. */
   @container (max-width: 460px) {
-    .tab { --pad: 9px; }
+    .tab { --pad: clamp(4px, calc((100cqw - 300px) / 16), 9px); }
     .tab .etichetta { display: none; }
     .tab.attivo .etichetta { display: inline; }
     .tab .glifo { font-size: 1.15rem; }
@@ -293,6 +297,15 @@ const STILE = `
            text-transform: uppercase; color: var(--secondary-text-color); }
 
   /* ---------- bacheca ---------- */
+  .assenza { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0;
+             border-bottom: 1px solid var(--divider-color); }
+  .anima .assenza { animation: entra .4s ease both; animation-delay: var(--ritardo); }
+  .assenza .data, .assenza .ora { font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .assenza .tit { flex: 1; min-width: 120px; }
+  .assenza .motivo { width: 100%; font-size: .85rem; color: var(--secondary-text-color); }
+  .assenza .stato-assenza { font-weight: 600; }
+  .assenza.giustificata .stato-assenza { color: var(--success-color, #2e7d32); }
+  .assenza.da-giustificare .stato-assenza { color: var(--error-color, #c62828); }
   .colloquio { padding: 8px 0; border-bottom: 1px solid var(--divider-color); }
   .anima .colloquio { animation: entra .4s ease both; animation-delay: var(--ritardo); }
   .riga-colloquio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%;
@@ -519,7 +532,7 @@ class CvvDashboardCard extends HTMLElement {
     const v = this._config.vista;
     if (v && v !== "combo" && !VISTE.some((x) => x.id === v)) {
       throw new Error(
-        `vista "${v}" non valida: usa medie, voti, bacheca, agenda, note, scrutini, compiti, colloqui o combo`
+        `vista "${v}" non valida: usa medie, voti, bacheca, agenda, note, scrutini, compiti, assenze, colloqui o combo`
       );
     }
     this._vista = v && v !== "combo" ? v : null;
@@ -805,6 +818,7 @@ class CvvDashboardCard extends HTMLElement {
       note: cerca("sensor", "note", cfg.note),
       scrutini: cerca("sensor", "scrutini", cfg.scrutini),
       colloqui: cerca("sensor", "colloqui", cfg.colloqui),
+      assenze: cerca("sensor", "assenze", cfg.assenze),
     };
   }
 
@@ -830,6 +844,7 @@ class CvvDashboardCard extends HTMLElement {
       note: () => this._vistaNote(ent),
       scrutini: () => this._vistaScrutini(ent),
       compiti: () => this._vistaAgenda(ent, true),
+      assenze: () => this._vistaAssenze(ent),
       colloqui: () => this._vistaColloqui(ent),
     };
     const verso =
@@ -1069,6 +1084,7 @@ class CvvDashboardCard extends HTMLElement {
     if (vista === "bacheca") return rosso(parseInt(ent.bacheca && ent.bacheca.state, 10));
     // solo le note ancora da leggere: il totale non è una novità da segnalare
     if (vista === "note") return rosso(this._attr(ent.note, "da_leggere", 0));
+    if (vista === "assenze") return rosso(this._attr(ent.assenze, "da_giustificare", 0));
     return "";
   }
 
@@ -1403,6 +1419,36 @@ class CvvDashboardCard extends HTMLElement {
           }
         </div>`
       )
+      .join("");
+  }
+
+  // --------------------------------------------------------------- assenze
+
+  /** Assenze, ritardi e uscite, in sola lettura: nessun comando per giustificare. */
+  _vistaAssenze(ent) {
+    if (!ent.assenze) return `<div class="vuoto">Assenze non disponibili.</div>`;
+    const items = [...(this._attr(ent.assenze, "items", []) || [])].sort((a, b) => {
+      const c = String(b.data || "").localeCompare(String(a.data || ""));
+      return c || (parseInt(b.ora, 10) || 0) - (parseInt(a.ora, 10) || 0);
+    });
+    if (!items.length)
+      return `<div class="vuoto">Nessuna assenza, ritardo o uscita per questo anno scolastico.</div>`;
+    const tipi = { assenza: "Assenza", ritardo: "Ritardo", uscita: "Uscita" };
+    return items
+      .map((a, i) => {
+        const d = new Date((a.data || "") + "T00:00:00");
+        const giorno = isNaN(d)
+          ? a.data || ""
+          : d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
+        const ok = !!a.giustificata;
+        return `<div class="assenza ${ok ? "giustificata" : "da-giustificare"}" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
+          <span class="data">${this._esc(giorno)}</span>
+          <span class="ora">${this._esc(a.ora || "")}</span>
+          <span class="tit">${tipi[a.tipo] || "Evento"}</span>
+          <span class="stato-assenza">${ok ? "✔ Giustificata" : "✖ Da giustificare"}</span>
+          ${a.motivo ? `<span class="motivo">${this._esc(a.motivo)}</span>` : ""}
+        </div>`;
+      })
       .join("");
   }
 
@@ -1763,12 +1809,12 @@ class CvvDashboardCardPanel extends HTMLElement {
                   font-size: 1.4rem; line-height: 1; padding: 8px 10px; border-radius: 8px; }
           .menu:hover { background: var(--secondary-background-color); }
           :host([narrow]) .menu { display: block; }
-          .studenti { display: flex; gap: 2px; height: 100%; }
+          .studenti { --pad: clamp(8px, 2.5vw, 18px); display: flex; gap: 2px; height: 100%; }
           .voce { display: flex; align-items: center; }
           .voce .avviso-hacs { margin: 0 -10px 0 12px; }
           ${STILE_AVVISO}
           .studente { position: relative; display: flex; align-items: center; gap: 10px; background: none;
-                      border: none; color: var(--secondary-text-color); cursor: pointer; padding: 0 18px;
+                      border: none; color: var(--secondary-text-color); cursor: pointer; padding: 0 var(--pad);
                       font: inherit; font-size: 1rem; white-space: nowrap;
                       transition: color .22s ease, background .22s ease; }
           .studente:hover { color: var(--primary-text-color); background: var(--secondary-background-color); }
@@ -1777,7 +1823,7 @@ class CvvDashboardCardPanel extends HTMLElement {
                                 width: 28px; height: 28px; border-radius: 50%; font-size: .85rem;
                                 font-weight: 600; background: var(--divider-color); color: inherit; }
           .studente.attivo .iniziale { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-          .studente.attivo::after { content: ""; position: absolute; left: 18px; right: 18px; bottom: 0;
+          .studente.attivo::after { content: ""; position: absolute; left: var(--pad); right: var(--pad); bottom: 0;
                                     height: 3px; background: var(--primary-color); border-radius: 3px 3px 0 0; }
           .contenuto { padding: 16px; box-sizing: border-box; }
           cvv-dashboard-card { display: block; width: 100%; }
