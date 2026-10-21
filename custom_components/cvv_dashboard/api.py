@@ -279,10 +279,11 @@ class CvvDashboardApi:
             _LOGGER.debug("Errore rete su %s: %s", url, err)
             return None, str(err)
 
-    async def _get_year_bound(self, resource: str):
+    async def _get_year_bound(self, resource: str, tollera_negato: bool = False):
         """Scarica una risorsa legata all'anno seguendo i piani di `piani_anno`.
 
         Ritorna (body, host_usato, anno_inizio) oppure (None, None, None).
+        Con `tollera_negato` un 401/403 non azzera il token e non solleva errori.
         """
         base = f"/rest/v1/students/{self.student_id}"
 
@@ -293,6 +294,10 @@ class CvvDashboardApi:
             status, body = await self._get(host, f"{base}/{resource}", token)
             if status == 200:
                 return body, host, anno
+
+            if status in (401, 403) and tollera_negato:
+                _LOGGER.debug("%s su %s: accesso negato (%s)", resource, host, status)
+                return None, None, None
 
             if status in (401, 403):
                 # Token scaduto: azzeralo e chiedi un nuovo login al ciclo dopo.
@@ -348,14 +353,16 @@ class CvvDashboardApi:
 
         # --- Assenze, ritardi e uscite (solo lettura) ----------------------
         # Una richiesta fallita non deve far fallire l'aggiornamento.
+        # Un 401 o 403 su questa risorsa facoltativa non azzera il token e non
+        # ripete il login: se il token e' scaduto davvero, lo vedono le altre.
         try:
-            abs_body, _, _ = await self._get_year_bound("absences/details")
-        except CvvDashboardTokenScaduto:
-            raise
+            abs_body, _, _ = await self._get_year_bound("absences/details", tollera_negato=True)
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Assenze non disponibili: %s", err)
             abs_body = None
         result["assenze"] = normalizza_assenze(abs_body)
+        # elenco vuoto ma valido (ok) o richiesta fallita (errore): vedi il coordinatore
+        result["assenze_stato"] = "ok" if abs_body is not None else "errore"
 
         # --- Bacheca (globale: sta sempre sul server corrente) -------------
         nb_status, nb_body = await self._get(

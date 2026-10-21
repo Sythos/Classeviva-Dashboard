@@ -162,6 +162,9 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
             # vuoto ma valido significa che non ci sono piu' slot
             if chiave == "colloqui" and data.get("colloqui_stato") != "errore":
                 continue
+            # le assenze si tengono solo dopo una richiesta fallita, non per un elenco vuoto valido
+            if chiave == "assenze" and data.get("assenze_stato") != "errore":
+                continue
             if not data.get(chiave) and vecchi.get(chiave):
                 data[chiave] = vecchi[chiave]
                 _LOGGER.debug("Sezione '%s' non aggiornata: tengo il dato precedente", chiave)
