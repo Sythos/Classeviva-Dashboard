@@ -25,7 +25,7 @@ type: custom:cvv-dashboard-card
 vista: agenda
 ~~~
 
-I valori validi sono `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti` e `combo`.
+I valori validi sono `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui` e `combo`.
 
 ## Usa una vista a tutta larghezza
 

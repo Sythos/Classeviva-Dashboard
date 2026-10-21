@@ -76,6 +76,8 @@ jobs:
           node-version: "20"
       - name: Compile Python files
         run: python -m compileall -q custom_components/cvv_dashboard
+      - name: Run the talks tests
+        run: python -m unittest discover -s tests -p "test_*.py"
       - name: Check JavaScript syntax
         run: node --check custom_components/cvv_dashboard/www/cvv-dashboard-card.js
       - name: Run the card tests

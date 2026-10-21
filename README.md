@@ -34,6 +34,7 @@ più pagine. La card trova da sola le entità dell'integrazione: non serve indic
 | **Annotazioni** | Annotazioni dei docenti e note disciplinari |
 | **Scrutini** | Pagelle e pagellini pubblicati, scaricabili |
 | **Compiti** | Compiti assegnati, raggruppati per giorno |
+| **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore); i colloqui prenotati si aprono per vedere aula e link |
 
 Il colore va in modo continuo dal rosso al verde in base al voto, con animazioni di
 ingresso e un layout che si adatta alla larghezza della card. Sotto i 460 px le schede
@@ -148,7 +149,7 @@ Opzioni comuni:
 
 | Opzione | Valori | Default |
 |---|---|---|
-| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `combo` | `combo` |
+| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui`, `combo` | `combo` |
 | `account` | parte dell'entity_id, se hai più studenti | — |
 | `anno_scolastico` | anno configurato, ad esempio `"26/27"` | più recente |
 | `titolo` | testo dell'intestazione (`""` per nasconderla) | nome dello studente |

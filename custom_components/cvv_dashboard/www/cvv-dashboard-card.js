@@ -33,7 +33,7 @@
  *        type: custom:cvv-dashboard-card
  *
  * Opzioni comuni:
- *   vista       medie | voti | bacheca | agenda | note | scrutini | compiti | combo
+ *   vista       medie | voti | bacheca | agenda | note | scrutini | compiti | colloqui | combo
  *   account     parte dell'entity_id, se hai piu' studenti
  *   anno_scolastico  anno selezionato, per esempio "26/27"; senza valore usa il più recente
  *   titolo      testo dell'intestazione ("" per nasconderla)
@@ -70,6 +70,7 @@ const VISTE = [
   { id: "note", nome: "Annotazioni", icona: "✎" },
   { id: "scrutini", nome: "Scrutini", icona: "★" },
   { id: "compiti", nome: "Compiti", icona: "📝" },
+  { id: "colloqui", nome: "Colloqui", icona: "☎" },
 ];
 
 // Sottomenù della vista Annotazioni.
@@ -292,6 +293,19 @@ const STILE = `
            text-transform: uppercase; color: var(--secondary-text-color); }
 
   /* ---------- bacheca ---------- */
+  .colloquio { padding: 8px 0; border-bottom: 1px solid var(--divider-color); }
+  .anima .colloquio { animation: entra .4s ease both; animation-delay: var(--ritardo); }
+  .riga-colloquio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%;
+                    background: none; border: none; padding: 0; font: inherit; text-align: left;
+                    color: var(--primary-text-color); }
+  button.riga-colloquio { cursor: pointer; }
+  .riga-colloquio .data, .riga-colloquio .ora { font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .riga-colloquio .tit { flex: 1; min-width: 120px; }
+  .colloquio.prenotato .riga-colloquio { color: var(--success-color, #2e7d32); font-weight: 700; }
+  .colloquio .dettagli { font-size: .85rem; margin-top: 6px; padding-left: 8px;
+                         color: var(--secondary-text-color); }
+  .colloquio .dettagli[hidden] { display: none; }
+  .colloquio .dettagli a { color: var(--primary-color); }
   .com { padding: 14px 0; border-bottom: 1px solid var(--divider-color); }
   .com:last-child { border-bottom: none; }
   .anima .com { animation: entra .4s ease both; animation-delay: var(--ritardo); }
@@ -505,7 +519,7 @@ class CvvDashboardCard extends HTMLElement {
     const v = this._config.vista;
     if (v && v !== "combo" && !VISTE.some((x) => x.id === v)) {
       throw new Error(
-        `vista "${v}" non valida: usa medie, voti, bacheca, agenda, note, scrutini, compiti o combo`
+        `vista "${v}" non valida: usa medie, voti, bacheca, agenda, note, scrutini, compiti, colloqui o combo`
       );
     }
     this._vista = v && v !== "combo" ? v : null;
@@ -790,6 +804,7 @@ class CvvDashboardCard extends HTMLElement {
       agenda: cerca("sensor", "agenda", cfg.agenda),
       note: cerca("sensor", "note", cfg.note),
       scrutini: cerca("sensor", "scrutini", cfg.scrutini),
+      colloqui: cerca("sensor", "colloqui", cfg.colloqui),
     };
   }
 
@@ -815,6 +830,7 @@ class CvvDashboardCard extends HTMLElement {
       note: () => this._vistaNote(ent),
       scrutini: () => this._vistaScrutini(ent),
       compiti: () => this._vistaAgenda(ent, true),
+      colloqui: () => this._vistaColloqui(ent),
     };
     const verso =
       this._direzione > 0 ? "da-destra" : this._direzione < 0 ? "da-sinistra" : "";
@@ -874,6 +890,17 @@ class CvvDashboardCard extends HTMLElement {
           else testo.textContent = testo.dataset.lungo;
           b.textContent = aperto ? "Leggi tutto" : "Riduci";
         }
+      })
+    );
+    this.shadowRoot.querySelectorAll("[data-colloquio]").forEach((b) =>
+      b.addEventListener("click", () => {
+        // apre o chiude i dettagli sul posto: ridisegnare farebbe ripartire le animazioni
+        const k = "colloquio:" + b.dataset.colloquio;
+        const aperto = this._espansi.has(k);
+        aperto ? this._espansi.delete(k) : this._espansi.add(k);
+        b.setAttribute("aria-expanded", String(!aperto));
+        const dettagli = b.parentElement && b.parentElement.querySelector(".dettagli");
+        if (dettagli) dettagli.hidden = aperto;
       })
     );
     this.shadowRoot.querySelectorAll("[data-materia]").forEach((b) =>
@@ -1377,6 +1404,63 @@ class CvvDashboardCard extends HTMLElement {
         </div>`
       )
       .join("");
+  }
+
+  // --------------------------------------------------------------- colloqui
+
+  /** Colloqui con i docenti, in sola lettura: nessun comando di prenotazione. */
+  _vistaColloqui(ent) {
+    const tutti = this._attr(ent.colloqui, "items", []) || [];
+    const stato = this._attr(ent.colloqui, "stato_dati", "");
+    // Stesso intervallo del server (fuso di Home Assistant): attributi `dal` e `al`.
+    const primo = this._attr(ent.colloqui, "dal", "") || "";
+    const ultimo = this._attr(ent.colloqui, "al", "") || "";
+    const items = tutti
+      .filter((c) => (!primo || (c.data || "") >= primo) && (!ultimo || (c.data || "") <= ultimo))
+      .sort((a, b) =>
+        `${a.data || ""} ${a.ora_inizio || ""}`.localeCompare(`${b.data || ""} ${b.ora_inizio || ""}`)
+      );
+    if (!items.length) {
+      if (!ent.colloqui || stato === "errore")
+        return `<div class="vuoto">Colloqui non disponibili.</div>`;
+      if (stato === "non_disponibile")
+        return `<div class="vuoto">Funzione non disponibile per questo account.</div>`;
+      return `<div class="vuoto">Nessun colloquio disponibile nei prossimi 28 giorni.</div>`;
+    }
+
+    const riga = (c, i) => {
+      const d = new Date((c.data || "") + "T00:00:00");
+      const giorno = isNaN(d)
+        ? c.data || ""
+        : d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
+      const ora = [c.ora_inizio, c.ora_fine].filter(Boolean).join("–");
+      const prenotato = c.stato === "prenotato";
+      const corpo = `<span class="data">${this._esc(giorno)}</span>
+          <span class="ora">${this._esc(ora)}</span>
+          <span class="tit">${this._esc(c.docente || "")}</span>
+          <span class="stato-colloquio">${prenotato ? "Prenotato" : "Disponibile"}</span>`;
+      if (!prenotato) {
+        return `<div class="colloquio" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
+          <div class="riga-colloquio">${corpo}</div></div>`;
+      }
+      const chiave = `${c.data}|${c.ora_inizio}|${c.docente}`;
+      const aperto = this._espansi.has("colloquio:" + chiave);
+      const modo = c.modalita === "distanza" ? "A distanza" : c.modalita === "presenza" ? "In presenza" : "";
+      const link = /^https?:\/\//i.test(c.link || "") ? c.link : "";
+      const dettagli = [
+        c.aula ? `<div><b>Aula:</b> ${this._esc(c.aula)}</div>` : "",
+        modo ? `<div><b>Modalità:</b> ${modo}</div>` : "",
+        link
+          ? `<div><a href="${this._esc(link)}" target="_blank" rel="noopener noreferrer">Link del colloquio</a></div>`
+          : "",
+        c.note ? `<div><b>Note:</b> ${this._esc(c.note)}</div>` : "",
+      ].join("");
+      return `<div class="colloquio prenotato" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
+        <button class="riga-colloquio" data-colloquio="${this._esc(chiave)}" aria-expanded="${aperto}">${corpo}</button>
+        <div class="dettagli" ${aperto ? "" : "hidden"}>${dettagli || "<div>Nessun dettaglio.</div>"}</div>
+      </div>`;
+    };
+    return items.map(riga).join("");
   }
 
   // ---------------------------------------------------------------- agenda

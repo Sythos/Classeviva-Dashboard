@@ -25,7 +25,7 @@ type: custom:cvv-dashboard-card
 vista: agenda
 ~~~
 
-Valid values are `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, and `combo`.
+Valid values are `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui`, and `combo`.
 
 ## Use a full-width view
 

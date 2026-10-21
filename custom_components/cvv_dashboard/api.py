@@ -50,6 +50,7 @@ import re
 import aiohttp
 
 from .const import ANNO_ULTIMO, API_KEY, USER_AGENT, BASE_HOST
+from .talks import formato_richiesta, unisci
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -106,6 +107,9 @@ class CvvDashboardApi:
         self.token: str | None = None
         self.token_ap: str | None = None
         self.student_id: str | None = None
+        # Lettere iniziali dell'ident ("G" genitore, "S" studente: da confermare
+        # con un login reale). Servono a non chiedere i colloqui a chi non puo'.
+        self.ident_prefisso: str = ""
         self.first_name: str = "Studente"
         self.newest_yy: int | None = None
         self.prev_host: str | None = None
@@ -126,6 +130,7 @@ class CvvDashboardApi:
         self.token = altro.token
         self.token_ap = altro.token_ap
         self.student_id = altro.student_id
+        self.ident_prefisso = altro.ident_prefisso
         self.first_name = altro.first_name
         self.newest_yy = altro.newest_yy
         self.prev_host = altro.prev_host
@@ -195,6 +200,7 @@ class CvvDashboardApi:
         if not m:
             raise CvvDashboardApiError("Impossibile estrarre lo student_id dall'ident.")
         self.student_id = m.group()
+        self.ident_prefisso = re.sub(r"[^A-Za-z]", "", data.get("ident", "")[: m.start()]).upper()
 
         await self._resolve_years()
 
@@ -362,6 +368,53 @@ class CvvDashboardApi:
 
         return result
 
+
+    @property
+    def colloqui_possibili(self) -> bool:
+        """False per un account studente: i colloqui sono per i genitori."""
+        return self.ident_prefisso != "S"
+
+    async def async_fetch_colloqui(self, inizio, fine) -> tuple[str, list[dict]]:
+        """Slot dei colloqui e colloqui prenotati, in sola lettura (solo GET).
+
+        Ritorna (esito, voci). Esito: "ok", "non_disponibile" (funzione assente
+        per l'account o la scuola) oppure "errore". Le rotte e i campi non sono
+        confermati su un registro reale. I colloqui non dipendono dall'anno:
+        si usano il server corrente e il token normale.
+        """
+        if not self.colloqui_possibili:
+            return "non_disponibile", []
+        if not self.token:
+            await self.login()
+            if not self.colloqui_possibili:
+                return "non_disponibile", []
+
+        periodo = f"{formato_richiesta(inizio)}/{formato_richiesta(fine)}"
+        for tentativo in (1, 2):
+            base = f"/rest/v1/parents/{self.student_id}/talks"
+            status, slot = await self._get(
+                BASE_HOST, f"{base}/teachersframes2/{periodo}", self.token
+            )
+            if status in (401, 403) and tentativo == 1:
+                # Puo' essere il token scaduto: rifai il login e riprova una volta.
+                self.token = None
+                self.token_ap = None
+                await self.login()
+                continue
+            break
+        if status in (401, 403, 404):
+            return "non_disponibile", []
+        if status != 200:
+            _LOGGER.debug("Colloqui: richiesta degli slot fallita (%s)", status)
+            return "errore", []
+
+        # Senza i colloqui prenotati uno slot prenotato sembrerebbe libero: in quel
+        # caso l'esito e' un errore e l'aggiornamento tiene l'elenco precedente.
+        status, prenotati = await self._get(BASE_HOST, f"{base}/mytalks/{periodo}", self.token)
+        if status != 200:
+            _LOGGER.debug("Colloqui: richiesta dei prenotati fallita (%s)", status)
+            return "errore", []
+        return "ok", unisci(slot, prenotati)
 
     async def leggi_comunicazione(self, evt: str, pub: str | int) -> str | None:
         """Testo di una comunicazione della bacheca.

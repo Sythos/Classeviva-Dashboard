@@ -38,9 +38,11 @@ from homeassistant.helpers.aiohttp_client import (
     async_get_clientsession,
 )
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .api import CvvDashboardApi, CvvDashboardAuthError, CvvDashboardApiError
 from .const import DOMAIN, UPDATE_MINUTES
+from .talks import intervallo
 from .web import CvvDashboardWebApi, CvvDashboardWebError, chiave_titolo
 
 _LOGGER = logging.getLogger(__name__)
@@ -133,6 +135,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         await self._aggiungi_agenda_web(data)
         await self._aggiungi_note_web(data)
         await self._aggiungi_scrutini_web(data)
+        await self._aggiungi_colloqui(data)
         # NB: i testi delle comunicazioni non lette NON si scaricano qui.
         # Vedi async_testi_bacheca: si prendono solo su richiesta esplicita.
         self._conserva_precedenti(data)
@@ -142,6 +145,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     _SEZIONI = (
         "voti", "medie_materia", "medie_periodo", "periodi", "media", "grades_year",
         "agenda", "note_web", "scrutini", "noticeboard", "didactics", "notes",
+        "colloqui",
     )
 
     def _conserva_precedenti(self, data: dict) -> None:
@@ -154,6 +158,10 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         """
         vecchi = self.data or {}
         for chiave in self._SEZIONI:
+            # i colloqui si tengono solo dopo una richiesta fallita: un elenco
+            # vuoto ma valido significa che non ci sono piu' slot
+            if chiave == "colloqui" and data.get("colloqui_stato") != "errore":
+                continue
             if not data.get(chiave) and vecchi.get(chiave):
                 data[chiave] = vecchi[chiave]
                 _LOGGER.debug("Sezione '%s' non aggiornata: tengo il dato precedente", chiave)
@@ -167,6 +175,26 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         data["note_web"] = web["note"]
         data["note_anno"] = web.get("anno")
         data["note_fonte"] = web.get("fonte") or "web"
+
+    async def _aggiungi_colloqui(self, data: dict) -> None:
+        """Colloqui con i docenti, in sola lettura, per oggi e i 27 giorni dopo.
+
+        Un anno concluso non ha colloqui. Una richiesta fallita non fa fallire
+        l'aggiornamento: si registra l'esito e restano gli altri dati.
+        """
+        data["colloqui"] = []
+        if self.api.piani_anno()[0][2]:
+            data["colloqui_stato"] = "ok"
+            return
+        inizio, fine = intervallo(dt_util.now().date())
+        try:
+            async with async_timeout.timeout(30):
+                esito, voci = await self.api.async_fetch_colloqui(inizio, fine)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Colloqui non disponibili: %s", err)
+            esito, voci = "errore", []
+        data["colloqui_stato"] = esito
+        data["colloqui"] = voci
 
     async def _aggiungi_scrutini_web(self, data: dict) -> None:
         """Pagelle ed esiti di scrutinio pubblicati per lo studente."""

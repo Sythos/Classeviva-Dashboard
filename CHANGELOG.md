@@ -3,6 +3,18 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Added
+
+- The card has a new last tab, Colloqui. It shows the teacher meeting slots for today and the next 27 days.
+- The view is read-only. It has no control to book, cancel, or change a meeting.
+- The slots use ascending date and time order. A booked slot is bold and green and has the text status Prenotato.
+- Select a booked slot to open or close its details: room, mode, meeting link, and notes.
+- A new sensor, Colloqui, holds the number of booked meetings.
+- The sensor does not send a request for a student account.
+- The routes and the field names of the register are not confirmed on a live account. Check them before a release.
+
 ## 0.4.5 - 2026-10-18
 
 ### Added

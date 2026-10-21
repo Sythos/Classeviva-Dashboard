@@ -13,6 +13,7 @@ CVV Dashboard uses Italian labels because these are the labels in the card. The 
 | ✎ | Annotazioni | Teacher comments and disciplinary notes. |
 | ★ | Scrutini | Published report cards. Download a report card from the card. |
 | 📝 | Compiti | Homework by date. |
+| ☎ | Colloqui | Teacher meeting slots for today and the next 27 days. The view is read-only and is for parent accounts. Select a booked slot to see its details. |
 
 ## Examples
 
@@ -57,7 +58,7 @@ Select the symbol to open the CVV Dashboard item in HACS. Install the update the
 
 | Option | Values | Default |
 |---|---|---|
-| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `combo` | `combo` |
+| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui`, `combo` | `combo` |
 | `account` | Account suffix from the entity ID | Detected account |
 | `anno_scolastico` | A year, for example `25/26` | Latest year |
 | `titolo` | Heading text; an empty value hides the heading | Student name |
