@@ -50,7 +50,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.4
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.6
     config:
       vista: combo
       studenti:
@@ -60,7 +60,7 @@ panel_custom:
           nome: Studente Due
 ~~~
 
-Sostituisci i valori degli account con quelli negli ID delle entità. Dopo un aggiornamento, cambia `v=0.4.4` con la versione installata, così il browser carica il file aggiornato.
+Sostituisci i valori degli account con quelli negli ID delle entità. Dopo un aggiornamento, cambia `v=0.4.6` con la versione installata, così il browser carica il file aggiornato.
 
 Se ometti `studenti`, il pannello mostra tutti gli account configurati in ordine alfabetico. Non usare sia l'opzione automatica del menu laterale sia un pannello manuale con lo stesso percorso.
 
