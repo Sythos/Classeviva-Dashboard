@@ -50,7 +50,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.4
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.6
     config:
       vista: combo
       studenti:
@@ -60,7 +60,7 @@ panel_custom:
           nome: Student Two
 ~~~
 
-Replace the account values with the values from your entity IDs. Change `v=0.4.4` to the installed version after an update so the browser loads the current card file.
+Replace the account values with the values from your entity IDs. Change `v=0.4.6` to the installed version after an update so the browser loads the current card file.
 
 If you omit `studenti`, the panel shows all configured accounts in alphabetical order. Do not use both the automatic sidebar option and a manual panel with the same path.
 
