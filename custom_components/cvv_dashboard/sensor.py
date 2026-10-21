@@ -38,11 +38,13 @@ from urllib.parse import urlencode
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .api import parse_anno
 from .const import DOMAIN
 from .coordinator import CvvDashboardCoordinator
 from .download import DOWNLOAD_URL
+from .talks import STATO_PRENOTATO, filtra_ordina, intervallo
 from .web import (
     CATEGORIA_ANNOTAZIONE,
     CATEGORIA_DISCIPLINARE,
@@ -84,6 +86,7 @@ TESTO_MAX = 500
 NOTE_LIMIT = 40
 NOTE_TESTO_MAX = 300
 SCRUTINI_LIMIT = 20
+TALKS_LIMIT = 40
 
 
 def _in_school_year(value, year_start: int) -> bool:
@@ -109,6 +112,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             NotesSensor(coordinator, eid),
             ScrutiniSensor(coordinator, eid),
             AgendaSensor(coordinator, eid),
+            TalksSensor(coordinator, eid),
         ]
     )
 
@@ -596,6 +600,48 @@ class AgendaSensor(_Base):
         }
 
 
+class TalksSensor(_Base):
+    """Colloqui con i docenti: solo lettura, oggi e i 27 giorni dopo.
+
+    Lo stato e' il numero di colloqui prenotati nell'intervallo. L'intervallo
+    si ricalcola a ogni lettura, con il fuso orario di Home Assistant.
+    """
+
+    _key = "talks"
+    _label = "Colloqui"
+    _icon = "mdi:account-voice"
+
+    def _voci(self) -> list[dict]:
+        oggi = dt_util.now().date()
+        return filtra_ordina(self._data.get("colloqui") or [], oggi)
+
+    @property
+    def native_value(self):
+        return sum(1 for v in self._voci() if v.get("stato") == STATO_PRENOTATO)
+
+    @property
+    def extra_state_attributes(self):
+        return self._attributes(limit=TALKS_LIMIT, completo=False)
+
+    def _attributes(self, limit: int | None = TALKS_LIMIT, completo: bool = False) -> dict:
+        voci = self._voci()
+        primo, ultimo = intervallo(dt_util.now().date())
+        prenotati = sum(1 for v in voci if v.get("stato") == STATO_PRENOTATO)
+        if limit is not None:
+            voci = voci[:limit]
+        if not completo:
+            # note e link restano fuori dagli attributi, che vanno nel Recorder
+            voci = [{k: v for k, v in x.items() if k not in ("note", "link")} for x in voci]
+        return {
+            "stato_dati": self._data.get("colloqui_stato"),
+            "prenotati": prenotati,
+            "disponibili": len(self._voci()) - prenotati,
+            "dal": primo.isoformat(),
+            "al": ultimo.isoformat(),
+            "items": voci,
+        }
+
+
 def anno_effettivo(coordinator: CvvDashboardCoordinator) -> int | None:
     """Anno di inizio dei dati del coordinatore: quello scelto, o quello letto dai dati."""
     if coordinator.anno is not None:
@@ -632,6 +678,7 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
     notes_sensor = NotesSensor(coordinator, entry_id)
     scrutini_sensor = ScrutiniSensor(coordinator, entry_id)
     agenda_sensor = AgendaSensor(coordinator, entry_id)
+    talks_sensor = TalksSensor(coordinator, entry_id)
 
     grade_items = grades_sensor._items(limit=None)
     if year_start is not None:
@@ -707,6 +754,8 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
         if scrutini_attributes["items"] else None
     )
 
+    talks_attributes = talks_sensor._attributes(limit=None, completo=True)
+
     return {
         "nome": coordinator.first_name,
         "anno": year_start,
@@ -723,6 +772,10 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
             "agenda": {
                 "state": len(agenda_attributes["items"]),
                 "attributes": agenda_attributes,
+            },
+            "colloqui": {
+                "state": talks_attributes["prenotati"],
+                "attributes": talks_attributes,
             },
         },
     }

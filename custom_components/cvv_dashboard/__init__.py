@@ -78,7 +78,7 @@ SCHEMA_LEGGI = vol.Schema(
 )
 SCHEMA_ISTANZA = vol.Schema({vol.Optional("entry_id"): cv.string})
 WS_CARD_DATA = f"{DOMAIN}/card_data"
-CARD_SENSOR_KEYS = ("media", "grades", "noticeboard", "notes", "scrutini", "agenda")
+CARD_SENSOR_KEYS = ("media", "grades", "noticeboard", "notes", "scrutini", "agenda", "talks")
 
 # Anni scelti al volo nella card: i dati restano in cache quanto un aggiornamento
 # normale, e dopo un errore non si riprova prima di qualche minuto.
