@@ -145,7 +145,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     _SEZIONI = (
         "voti", "medie_materia", "medie_periodo", "periodi", "media", "grades_year",
         "agenda", "note_web", "scrutini", "noticeboard", "didactics", "notes",
-        "colloqui",
+        "colloqui", "assenze",
     )
 
     def _conserva_precedenti(self, data: dict) -> None:

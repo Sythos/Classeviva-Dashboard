@@ -7,6 +7,13 @@ Each section has the version number and the date of the release.
 
 ### Added
 
+- The card has a new tab, Assenze e Ritardi, after Compiti. It shows absences, late arrivals, and early exits.
+- The list shows the newest record first. Green text means justified. Red text means the record needs justification.
+- Each record has a text status and an icon. The tab shows the number of records that need justification.
+- The view is read-only. It has no control to justify, edit, or delete a record.
+- A new sensor, Assenze e ritardi, holds the number of records that need justification.
+- The integration reads the records with the route `absences/details`. This route is not yet confirmed on a live register.
+- A failed request keeps the last good list.
 - The card has a new last tab, Colloqui. It shows the teacher meeting slots for today and the next 27 days.
 - The view is read-only. It has no control to book, cancel, or change a meeting.
 - The slots use ascending date and time order. A booked slot is bold and green and has the text status Prenotato.
@@ -14,6 +21,11 @@ Each section has the version number and the date of the release.
 - A new sensor, Colloqui, holds the number of booked meetings.
 - The sensor does not send a request for a student account.
 - The routes and the field names of the register are not confirmed on a live account. Check them before a release.
+
+### Changed
+
+- The spacing between the tabs of the card becomes smaller before the tab row uses a scroll bar.
+- The student bar of the sidebar page uses the same rule.
 
 ## 0.4.5 - 2026-10-18
 

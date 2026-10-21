@@ -50,6 +50,7 @@ import re
 import aiohttp
 
 from .const import ANNO_ULTIMO, API_KEY, USER_AGENT, BASE_HOST
+from .absences import normalizza as normalizza_assenze
 from .talks import formato_richiesta, unisci
 
 _LOGGER = logging.getLogger(__name__)
@@ -344,6 +345,17 @@ class CvvDashboardApi:
         # --- Note disciplinari ---------------------------------------------
         notes_body, _, _ = await self._get_year_bound("notes/all")
         result["notes"] = _flatten_notes(notes_body)
+
+        # --- Assenze, ritardi e uscite (solo lettura) ----------------------
+        # Una richiesta fallita non deve far fallire l'aggiornamento.
+        try:
+            abs_body, _, _ = await self._get_year_bound("absences/details")
+        except CvvDashboardTokenScaduto:
+            raise
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Assenze non disponibili: %s", err)
+            abs_body = None
+        result["assenze"] = normalizza_assenze(abs_body)
 
         # --- Bacheca (globale: sta sempre sul server corrente) -------------
         nb_status, nb_body = await self._get(

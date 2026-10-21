@@ -13,6 +13,7 @@ CVV Dashboard usa etichette in italiano, come nella card. I simboli restano acca
 | ✎ | Annotazioni | Annotazioni dei docenti e note disciplinari. |
 | ★ | Scrutini | Pagelle e pagellini pubblicati. Puoi scaricarli dalla card. |
 | 📝 | Compiti | Compiti assegnati, per data. |
+| ⏱ | Assenze e Ritardi | Assenze, ritardi e uscite dell'anno, dalla più recente. Verde indica giustificata, rosso indica da giustificare. La vista è in sola lettura. |
 | ☎ | Colloqui | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo. La vista è in sola lettura e per gli account genitore. Seleziona uno slot prenotato per vedere i dettagli. |
 
 ## Esempi
@@ -58,7 +59,7 @@ Seleziona il simbolo per aprire CVV Dashboard in HACS. Installa l'aggiornamento 
 
 | Opzione | Valori | Predefinito |
 |---|---|---|
-| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `colloqui`, `combo` | `combo` |
+| `vista` | `medie`, `voti`, `bacheca`, `agenda`, `note`, `scrutini`, `compiti`, `assenze`, `colloqui`, `combo` | `combo` |
 | `account` | Parte dell'account nell'ID dell'entità | Account rilevato |
 | `anno_scolastico` | Un anno, per esempio `25/26` | Ultimo anno |
 | `titolo` | Testo dell'intestazione; un valore vuoto la nasconde | Nome dello studente |
