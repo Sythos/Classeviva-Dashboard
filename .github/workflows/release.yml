@@ -125,14 +125,15 @@ jobs:
           cd custom_components/cvv_dashboard
           zip -r ../../cvv_dashboard.zip . -x "*__pycache__*"
 
-      - name: Check that the archive holds no guide or CI files
+      - name: Check that the archive holds only the integration
         shell: bash
         run: |
           set -euo pipefail
           if unzip -Z1 cvv_dashboard.zip | grep -E '(^|/)(pages|\.github|scripts|workflows)(/|$)'; then
-            echo "The archive holds guide, script, or CI paths." >&2
+            echo "The archive holds files that are not part of the integration" >&2
             exit 1
           fi
+          unzip -Z1 cvv_dashboard.zip | grep -qx 'manifest.json'
 
       - name: Generate the signed provenance attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -151,21 +152,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "${GITHUB_REF_NAME}" cvv_dashboard.zip --verify-tag --title "CVV Dashboard ${GITHUB_REF_NAME}" --notes-file release-notes.md
 
-  dispatch-pages:
-    name: Start the guide deploy on main
+  start-pages-deploy:
+    name: Start the Pages deploy from main
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: release
     runs-on: ubuntu-latest
     permissions:
       actions: write
     steps:
-      - name: Dispatch the Release workflow on main
+      - name: Run this workflow on main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run release.yml --repo "${GITHUB_REPOSITORY}" --ref main
 
   deploy-pages:
     name: Deploy the bilingual guide
+    # The Pages deploy runs only from main, started by hand or by the job above.
+    # A run on a tag never deploys: the environment accepts only branches.
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: build-pages
     runs-on: ubuntu-latest

@@ -7,6 +7,6 @@
 *.jpg binary
 *.pdf binary
 
-# The automatic source archives of a tag do not hold the guide or the CI files.
+# Le fonti della guida e i file CI restano fuori dagli archivi sorgente di un tag.
 /pages export-ignore
 /.github export-ignore
