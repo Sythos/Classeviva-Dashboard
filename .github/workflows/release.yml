@@ -125,6 +125,15 @@ jobs:
           cd custom_components/cvv_dashboard
           zip -r ../../cvv_dashboard.zip . -x "*__pycache__*"
 
+      - name: Check that the archive holds no guide or CI files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if unzip -Z1 cvv_dashboard.zip | grep -E '(^|/)(pages|\.github|scripts|workflows)(/|$)'; then
+            echo "The archive holds guide, script, or CI paths." >&2
+            exit 1
+          fi
+
       - name: Generate the signed provenance attestation
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
@@ -142,12 +151,23 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "${GITHUB_REF_NAME}" cvv_dashboard.zip --verify-tag --title "CVV Dashboard ${GITHUB_REF_NAME}" --notes-file release-notes.md
 
+  dispatch-pages:
+    name: Start the guide deploy on main
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch the Release workflow on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run release.yml --repo "${GITHUB_REPOSITORY}" --ref main
+
   deploy-pages:
     name: Deploy the bilingual guide
-    if: always() && needs.build-pages.result == 'success' && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success')
-    needs:
-      - build-pages
-      - release
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: build-pages
     runs-on: ubuntu-latest
     permissions:
       pages: write

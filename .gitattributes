@@ -6,3 +6,7 @@
 *.png binary
 *.jpg binary
 *.pdf binary
+
+# The automatic source archives of a tag do not hold the guide or the CI files.
+/pages export-ignore
+/.github export-ignore
