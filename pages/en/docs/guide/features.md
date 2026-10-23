@@ -53,7 +53,7 @@ The year selector appears when more than one year is available. The selection st
 
 On a version that supports this function, a yellow **!** can appear before the student name on a card or in the student panel. It means HACS reports an update for CVV Dashboard.
 
-Select the symbol to open the CVV Dashboard item in HACS. Install the update there. The symbol appears only when HACS is installed, HACS reports an update, and the Home Assistant user has administrator access. Older releases may not have this function.
+Select the symbol to open the Home Assistant Updates page. Install the update there. The symbol does not install the update. The symbol appears only when HACS is installed, HACS reports an update, and the Home Assistant user has administrator access. Older releases may not have this function.
 
 ## Card options
 

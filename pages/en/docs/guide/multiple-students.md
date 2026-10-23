@@ -66,7 +66,7 @@ If you omit `studenti`, the panel shows all configured accounts in alphabetical 
 
 ## HACS update alert
 
-On a version that supports this function, HACS can show a yellow **!** before the student name on each card and in the student selector. Select it to open the CVV Dashboard page in HACS. HACS must report an update, and the Home Assistant user must have administrator access. Older releases may not have this function.
+On a version that supports this function, HACS can show a yellow **!** before the student name on each card and in the student selector. Select it to open the Home Assistant Updates page. HACS must report an update, and the Home Assistant user must have administrator access. Older releases may not have this function.
 
 ## Separate academic years
 
