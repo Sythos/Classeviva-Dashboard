@@ -423,7 +423,7 @@ const STILE = `
 
 // Avviso di aggiornamento HACS: un "!" giallo prima del nome dello studente.
 const REPOSITORY_HACS = "sythos/classeviva-dashboard";
-const ETICHETTA_AVVISO = "CVV Dashboard update available";
+const ETICHETTA_AVVISO = "Open Home Assistant updates";
 
 // Stato condiviso da tutte le card e dal pannello. Solo un amministratore vede l'avviso:
 // il comando HACS richiede i diritti di amministratore e solo lui può aggiornare.
@@ -477,7 +477,8 @@ const avvisoHacs = {
 
   apri() {
     if (!this.idRepository) return;
-    history.pushState(null, "", `/hacs/repository/${encodeURIComponent(this.idRepository)}`);
+    // Solo la navigazione: l'utente rivede e completa l'aggiornamento in Home Assistant.
+    history.pushState(null, "", "/config/updates");
     window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
   },
 

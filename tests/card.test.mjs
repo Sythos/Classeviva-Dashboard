@@ -26,11 +26,13 @@ function nuovoContesto() {
       this.shadowRoot = { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
       return this.shadowRoot;
     }
-    addEventListener() {}
+    addEventListener(tipo, funzione) { (this.ascoltatori ||= {})[tipo] = funzione; }
     setAttribute(n, v) { (this.attributi ||= {})[n] = String(v); }
     getAttribute(n) { return (this.attributi || {})[n]; }
   }
-  const finestra = { customCards: [] };
+  const navigazioni = [];
+  const eventi = [];
+  const finestra = { customCards: [], dispatchEvent: (e) => { eventi.push(e); return true; } };
   const contesto = {
     HTMLElement: Elemento,
     customElements: {
@@ -41,12 +43,14 @@ function nuovoContesto() {
       },
     },
     window: finestra,
+    history: { pushState: (stato, titolo, url) => navigazioni.push(url) },
+    CustomEvent: class { constructor(tipo, init) { this.type = tipo; this.detail = init && init.detail; } },
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     document: { createElement: () => new Elemento() },
     console: { info() {}, error() {}, warn() {}, log() {} },
   };
   vm.createContext(contesto);
-  return { contesto, definiti, finestra };
+  return { contesto, definiti, finestra, navigazioni, eventi };
 }
 
 function carica(contesto) {
@@ -230,7 +234,37 @@ test("an administrator sees the HACS alert when HACS reports an update for this 
   card.hass = hass;
   await new Promise((r) => setImmediate(r));
   assert.equal(titolo.figli.length, 1);
-  assert.equal(titolo.figli[0].getAttribute("aria-label"), "CVV Dashboard update available");
+  assert.equal(titolo.figli[0].getAttribute("aria-label"), "Open Home Assistant updates");
+});
+
+test("selecting the HACS alert opens the Home Assistant Updates page and does not call HACS again", async () => {
+  const { contesto, definiti, navigazioni, eventi } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass, chiamate } = hassHacs({ admin: true, lista: LISTA_HACS });
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  const chiamateBase = chiamate.length;
+  let fermato = false;
+  let annullato = false;
+  titolo.figli[0].ascoltatori.click({ stopPropagation: () => { fermato = true; }, preventDefault: () => { annullato = true; } });
+  assert.deepEqual(navigazioni, ["/config/updates"]);
+  assert.equal(eventi.length, 1);
+  assert.equal(eventi[0].type, "location-changed");
+  assert.ok(fermato && annullato);
+  assert.equal(chiamate.length, chiamateBase);
+});
+
+test("the HACS alert is hidden when the permission data is missing", async () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const { card, titolo } = cardConAvviso(definiti);
+  const { hass, chiamate } = hassHacs({ admin: true, lista: LISTA_HACS });
+  delete hass.user;
+  card.hass = hass;
+  await new Promise((r) => setImmediate(r));
+  assert.equal(titolo.figli.length, 0);
+  assert.ok(!chiamate.includes("hacs/repositories/list"));
 });
 
 test("the HACS alert is hidden for a user who is not an administrator", async () => {
