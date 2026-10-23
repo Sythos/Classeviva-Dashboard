@@ -53,7 +53,7 @@ Il selettore dell'anno compare quando è disponibile più di un anno. La scelta 
 
 In una versione che supporta questa funzione, un **!** giallo può comparire prima del nome dello studente sulla card o nel pannello. Significa che HACS segnala un aggiornamento di CVV Dashboard.
 
-Seleziona il simbolo per aprire CVV Dashboard in HACS. Installa l'aggiornamento da lì. Il simbolo compare solo se HACS è installato, se HACS segnala un aggiornamento e se l'utente Home Assistant ha i diritti di amministratore. Le release precedenti potrebbero non avere questa funzione.
+Seleziona il simbolo per aprire la pagina Aggiornamenti di Home Assistant. Installa l'aggiornamento da lì. Il simbolo non installa l'aggiornamento. Il simbolo compare solo se HACS è installato, se HACS segnala un aggiornamento e se l'utente Home Assistant ha i diritti di amministratore. Le release precedenti potrebbero non avere questa funzione.
 
 ## Opzioni della card
 

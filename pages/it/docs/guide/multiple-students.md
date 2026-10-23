@@ -66,7 +66,7 @@ Se ometti `studenti`, il pannello mostra tutti gli account configurati in ordine
 
 ## Avviso di aggiornamento HACS
 
-In una versione che supporta questa funzione, HACS può mostrare un **!** giallo prima del nome dello studente in ogni card e nel selettore degli studenti. Selezionalo per aprire la pagina CVV Dashboard in HACS. HACS deve segnalare un aggiornamento e l'utente Home Assistant deve avere i diritti di amministratore. Le release precedenti potrebbero non avere questa funzione.
+In una versione che supporta questa funzione, HACS può mostrare un **!** giallo prima del nome dello studente in ogni card e nel selettore degli studenti. Selezionalo per aprire la pagina Aggiornamenti di Home Assistant. HACS deve segnalare un aggiornamento e l'utente Home Assistant deve avere i diritti di amministratore. Le release precedenti potrebbero non avere questa funzione.
 
 ## Anni scolastici separati
 
