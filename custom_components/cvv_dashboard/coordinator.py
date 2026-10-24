@@ -29,8 +29,6 @@ import asyncio
 import logging
 from datetime import timedelta
 
-import async_timeout
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import (
@@ -118,7 +116,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
 
     async def _scarica_dati(self) -> dict:
         try:
-            async with async_timeout.timeout(30):
+            async with asyncio.timeout(30):
                 data = await self.api.async_fetch()
         except CvvDashboardAuthError as err:
             # Solo credenziali rifiutate: qui la riautenticazione ci sta, perche'
@@ -191,7 +189,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
             return
         inizio, fine = intervallo(dt_util.now().date())
         try:
-            async with async_timeout.timeout(30):
+            async with asyncio.timeout(30):
                 esito, voci = await self.api.async_fetch_colloqui(inizio, fine)
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Colloqui non disponibili: %s", err)
@@ -224,7 +222,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         if not mancanti:
             return 0
         try:
-            async with async_timeout.timeout(30):
+            async with asyncio.timeout(30):
                 testi = await self.web.async_fetch_testi_bacheca()
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Testi bacheca dal portale non disponibili: %s", err)
@@ -281,7 +279,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     async def _chiedi_al_portale(self, cosa: str, metodo):
         """Chiama il portale web senza far fallire l'intero aggiornamento."""
         try:
-            async with async_timeout.timeout(60):
+            async with asyncio.timeout(60):
                 return await metodo(self.api.piani_anno())
         except CvvDashboardWebError as err:
             _LOGGER.warning("%s dal portale web non disponibili: %s", cosa.capitalize(), err)
