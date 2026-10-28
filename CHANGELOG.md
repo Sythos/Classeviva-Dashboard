@@ -3,6 +3,16 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.7 - 2026-10-28
+
+### Changed
+
+- The HACS update alert opens the Home Assistant Updates page, `/config/updates`, on the active Home Assistant origin.
+- The alert does not start an update. Home Assistant controls the access and the installation.
+- The alert is still visible only to a signed-in user who can manage the update.
+- The integration uses `asyncio.timeout` in place of `async_timeout`.
+- The release workflow deploys the Pages only from `main`. The release archive holds only the integration folder.
+
 ## 0.4.6 - 2026-10-21
 
 ### Added
