@@ -31,6 +31,7 @@ Nota: lo stato di un sensore in HA è max 255 caratteri: le liste stanno negli a
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from datetime import date, timedelta
@@ -566,7 +567,23 @@ class AgendaSensor(_Base):
 
     @property
     def extra_state_attributes(self):
-        return self._attributes()
+        attributes = self._attributes()
+        revision_data = {
+            "anno": self._data.get("compiti_anno") or self._data.get("agenda_anno"),
+            "stato": self._data.get("compiti_stato"),
+            "items": normalizza_compiti(self._data.get("compiti"), self._data.get("agenda")),
+        }
+        revision_json = json.dumps(
+            revision_data,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        # The card watches sensor timestamps. This hash changes when its homework data changes.
+        attributes["compiti_revisione"] = hashlib.sha256(
+            revision_json.encode("utf-8")
+        ).hexdigest()
+        return attributes
 
     def _attributes(
         self,
