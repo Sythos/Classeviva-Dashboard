@@ -3,6 +3,17 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.8 - 2026-10-28
+
+### Changed
+
+- The Compiti view shows the homework from the family portal session.
+- The list starts from today. It uses ascending due-date order.
+- Each task shows the due time, description, subject, teacher, and assignment date.
+- The Agenda view does not change.
+- A failed request keeps the last valid list.
+- The Agenda sensor has a revision hash of the homework list. The card reloads its data when the homework changes.
+
 ## 0.4.7 - 2026-10-28
 
 ### Changed
