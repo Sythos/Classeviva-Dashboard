@@ -131,6 +131,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
 
         await self._aggiungi_voti_web(data)
         await self._aggiungi_agenda_web(data)
+        await self._aggiungi_compiti(data)
         await self._aggiungi_note_web(data)
         await self._aggiungi_scrutini_web(data)
         await self._aggiungi_colloqui(data)
@@ -142,7 +143,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     # sezioni che possono restare vuote se una delle due fonti non risponde
     _SEZIONI = (
         "voti", "medie_materia", "medie_periodo", "periodi", "media", "grades_year",
-        "agenda", "note_web", "scrutini", "noticeboard", "didactics", "notes",
+        "agenda", "compiti", "note_web", "scrutini", "noticeboard", "didactics", "notes",
         "colloqui", "assenze",
     )
 
@@ -162,6 +163,8 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
                 continue
             # le assenze si tengono solo dopo una richiesta fallita, non per un elenco vuoto valido
             if chiave == "assenze" and data.get("assenze_stato") != "errore":
+                continue
+            if chiave == "compiti" and data.get("compiti_stato") != "errore":
                 continue
             if not data.get(chiave) and vecchi.get(chiave):
                 data[chiave] = vecchi[chiave]
@@ -275,6 +278,21 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         data["agenda"] = web["agenda"]
         data["agenda_anno"] = web.get("anno")
         data["agenda_fonte"] = web.get("fonte") or "web"
+
+    async def _aggiungi_compiti(self, data: dict) -> None:
+        """Read homework from the family portal, without changing Agenda."""
+        data.setdefault("compiti", [])
+        data["compiti_stato"] = "errore"
+        web = await self._chiedi_al_portale(
+            "homework",
+            lambda piani: self.web.async_fetch_compiti(piani, self.api.student_id),
+        )
+        if not web or web.get("stato") != "ok":
+            return
+        data["compiti"] = web.get("compiti") or []
+        data["compiti_anno"] = web.get("anno")
+        data["compiti_fonte"] = web.get("fonte")
+        data["compiti_stato"] = "ok"
 
     async def _chiedi_al_portale(self, cosa: str, metodo):
         """Chiama il portale web senza far fallire l'intero aggiornamento."""

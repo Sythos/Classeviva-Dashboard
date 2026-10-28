@@ -87,6 +87,7 @@ LOGIN_PAGE = "/home/app/default/login.php"
 MENU_PATH = "/home/app/default/menu_webinfoschool_studenti.php?custcode="
 VOTI_PATH = "/cvv/app/default/genitori_voti.php"
 AGENDA_PATH = "/fml/app/default/agenda_studenti.php"
+HOMEWORKS_PATH = "/rest/w1/students/{student_id}/homeworks/index"
 NOTE_PATH = "/fml/app/default/gioprof_note_studente.php"
 BACHECA_PATH = "/sif/app/default/bacheca_personale.php"
 SCRUTINI_PATH = "/sol/app/default/documenti_sol.php"
@@ -694,6 +695,65 @@ class CvvDashboardWebApi:
         return risultato
 
     # ---------------------------------------------------------------- agenda
+
+    async def _scarica_compiti(self, host: str, student_id: str) -> list[dict] | None:
+        """Read the homework list from the authenticated family portal session."""
+        url = f"https://{host}{HOMEWORKS_PATH.format(student_id=student_id)}"
+        try:
+            async with self._session.get(
+                url,
+                headers=self._headers(
+                    Accept="application/json, text/plain, */*",
+                    Referer=f"https://{host}/fe/fam/didattica",
+                ),
+            ) as resp:
+                if "login" in str(resp.url).lower():
+                    return self._fallita("redirect to login")
+                if resp.status != 200:
+                    return self._fallita(
+                        f"HTTP status {resp.status}",
+                        definitiva=resp.status not in (401, 403),
+                    )
+                try:
+                    corpo = await resp.json(content_type=None)
+                except (ValueError, aiohttp.ClientError):
+                    return self._fallita("homework response is not JSON", definitiva=True)
+        except aiohttp.ClientError as err:
+            _LOGGER.debug("Homework request failed (%s)", type(err).__name__)
+            return self._fallita(f"network error ({type(err).__name__})")
+
+        voci = corpo.get("items") if isinstance(corpo, dict) else None
+        if not isinstance(voci, list):
+            return self._fallita("homework response has an invalid format", definitiva=True)
+        return [voce for voce in voci if isinstance(voce, dict)]
+
+    async def async_fetch_compiti(
+        self,
+        piani: list[tuple[str, int | None, bool]],
+        student_id: str,
+    ) -> dict:
+        """Read homework for the selected school year without changing portal data."""
+        risultato: dict = {
+            "compiti": [],
+            "anno": None,
+            "fonte": None,
+            "stato": "errore",
+        }
+        for host, anno, storico in piani:
+            voci = await self._con_sessione(
+                host,
+                storico,
+                lambda: self._scarica_compiti(host, student_id),
+                "homework",
+            )
+            if voci is None:
+                continue
+            risultato["compiti"] = voci
+            risultato["anno"] = f"{anno}/{anno + 1}" if anno else None
+            risultato["fonte"] = host
+            risultato["stato"] = "ok"
+            return risultato
+        return risultato
 
     async def _scarica_eventi(self, host: str, anno: int | None) -> list[dict] | None:
         """Interroga la stessa sorgente JSON che alimenta il calendario del sito."""

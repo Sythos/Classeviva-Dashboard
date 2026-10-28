@@ -63,6 +63,8 @@ mostrano le sole icone.
   di Home Assistant troppo presto o in parte.
 - **0.4.4, agenda.** L'agenda mostra gli eventi da oggi in poi, in ordine di data e di ora. Le date passate sono nascoste.
 - **0.4.5, avviso di aggiornamento.** Un "!" giallo accanto al nome dello studente indica un aggiornamento HACS di questa integrazione. Lo vede solo un amministratore.
+- **0.4.6, assenze e colloqui.** Schede in sola lettura mostrano assenze, ritardi e uscite. L'ultima scheda mostra gli orari dei colloqui di oggi e dei 27 giorni successivi. Gli appuntamenti prenotati mostrano i dettagli. La card riduce lo spazio tra le schede.
+- **0.4.7, avviso di aggiornamento.** L'avviso apre la pagina Aggiornamenti di Home Assistant per un utente autorizzato. Home Assistant gestisce l'accesso e l'installazione. L'archivio della release contiene solo l'integrazione.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
