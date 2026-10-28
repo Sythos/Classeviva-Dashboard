@@ -226,7 +226,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.6
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.7
     config:
       vista: combo
       anno_scolastico: "26/27"
