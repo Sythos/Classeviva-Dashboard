@@ -47,6 +47,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import CvvDashboardCoordinator
+from .homeworks import normalizza as normalizza_compiti
 from .web import (
     TIPI_RUMOROSI,
     TIPO_AULA_VIRTUALE,
@@ -164,7 +165,16 @@ class CvvDashboardCalendar(CoordinatorEntity, CalendarEntity):
     def _all_events(self) -> list[CalendarEvent]:
         data = self.coordinator.data or {}
         events = []
-        for item in data.get("agenda", []):
+        if self._tipi == {TIPO_COMPITI}:
+            items = normalizza_compiti(data.get("compiti"), data.get("agenda"))
+            oggi = dt_util.now().date().isoformat()
+            items = [
+                item for item in items
+                if str(item.get("evtDatetimeBegin") or "")[:10] >= oggi
+            ]
+        else:
+            items = data.get("agenda", [])
+        for item in items:
             if not self._accetta(item):
                 continue
             ev = _to_event(item)

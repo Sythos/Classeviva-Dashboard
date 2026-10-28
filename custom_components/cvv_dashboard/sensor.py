@@ -45,6 +45,7 @@ from .api import parse_anno
 from .const import DOMAIN
 from .coordinator import CvvDashboardCoordinator
 from .download import DOWNLOAD_URL
+from .homeworks import normalizza as normalizza_compiti, per_card as compiti_per_card
 from .talks import STATO_PRENOTATO, filtra_ordina, intervallo
 from .web import (
     CATEGORIA_ANNOTAZIONE,
@@ -683,6 +684,7 @@ def anno_effettivo(coordinator: CvvDashboardCoordinator) -> int | None:
     data = coordinator.data or {}
     for source in (
         data.get("grades_year"),
+        data.get("compiti_anno"),
         data.get("agenda_anno"),
         data.get("note_anno"),
         data.get("scrutini_anno"),
@@ -769,6 +771,22 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
         ]
     agenda_attributes["totale"] = len(agenda_attributes["items"])
 
+    compiti_items = compiti_per_card(
+        normalizza_compiti(data.get("compiti"), data.get("agenda"))
+    )
+    if year_start is not None:
+        compiti_items = [
+            item for item in compiti_items
+            if _in_school_year(item.get("inizio"), year_start)
+        ]
+    compiti_attributes = {
+        "anno": data.get("compiti_anno") or data.get("agenda_anno"),
+        "fonte": data.get("compiti_fonte"),
+        "stato_dati": data.get("compiti_stato"),
+        "totale": len(compiti_items),
+        "items": compiti_items,
+    }
+
     scrutini_attributes = scrutini_sensor._attributes(limit=None)
     if year_start is not None:
         items = []
@@ -809,6 +827,10 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
             "agenda": {
                 "state": len(agenda_attributes["items"]),
                 "attributes": agenda_attributes,
+            },
+            "compiti": {
+                "state": len(compiti_items),
+                "attributes": compiti_attributes,
             },
             "colloqui": {
                 "state": talks_attributes["prenotati"],

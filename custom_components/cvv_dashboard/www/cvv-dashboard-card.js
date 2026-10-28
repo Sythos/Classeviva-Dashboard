@@ -1514,6 +1514,8 @@ class CvvDashboardCard extends HTMLElement {
 
   _vistaAgenda(ent, soloCompiti = false) {
     const agenda = this._attr(ent.agenda, "items", []) || [];
+    const compitiCard = this._attr(ent.compiti, "items", null);
+    const erroreCompiti = soloCompiti && this._attr(ent.compiti, "stato_dati") === "errore";
     // Agenda: only today and later days, in ascending order. The date is read
     // at each render, so it is always the current local date. A school year that
     // is already over keeps all its days.
@@ -1525,11 +1527,19 @@ class CvvDashboardCard extends HTMLElement {
     ].join("-");
     const annoVisto = annoInizio(this._attr(ent.media, "anno") || this._attr(ent.voti, "anno"));
     const annoPassato = annoVisto !== null && annoVisto < annoDelGiorno(adesso);
+    const compiti = Array.isArray(compitiCard)
+      ? compitiCard
+      : agenda.filter((e) => (e.tipo || "").toLowerCase().startsWith("compiti"));
     const items = soloCompiti
-      ? agenda.filter((e) => (e.tipo || "").toLowerCase().startsWith("compiti"))
+      ? compiti.filter((e) => (e.inizio || "").slice(0, 10) >= oggi)
       : agenda.filter((e) => annoPassato || (e.inizio || "").slice(0, 10) >= oggi);
     if (!items.length) {
-      return `<div class="vuoto">${soloCompiti ? "Nessun compito assegnato per questo anno scolastico." : "Nessun evento in agenda."}</div>`;
+      const testo = erroreCompiti
+        ? "Compiti non disponibili. Verifica la connessione al portale ClasseViva."
+        : soloCompiti
+          ? "Nessun compito con scadenza da oggi in poi."
+          : "Nessun evento in agenda.";
+      return `<div class="vuoto">${testo}</div>`;
     }
 
     const perGiorno = {};
@@ -1544,7 +1554,6 @@ class CvvDashboardCard extends HTMLElement {
     );
 
     const giorni = Object.keys(perGiorno).sort();
-    if (soloCompiti) giorni.reverse();
 
     return giorni
       .map((g, i) => {
@@ -1560,11 +1569,24 @@ class CvvDashboardCard extends HTMLElement {
           .map((e) => {
             const compiti = (e.tipo || "").toLowerCase().startsWith("compiti");
             const ora = (e.inizio || "").slice(11, 16);
+            const pubblicato = (e.pubblicato || "").slice(0, 10);
+            const dataPubblicazione = /^\d{4}-\d{2}-\d{2}$/.test(pubblicato)
+              ? new Date(`${pubblicato}T00:00:00`).toLocaleDateString("it-IT")
+              : pubblicato;
+            const dettaglioCompito = soloCompiti
+              ? [
+                  e.autore ? `<small>Docente: ${this._esc(e.autore)}</small>` : "",
+                  dataPubblicazione
+                    ? `<small>Pubblicato: ${this._esc(dataPubblicazione)}</small>`
+                    : "",
+                  e.completato === true ? "<small>Completato</small>" : "",
+                ].join("")
+              : "";
             return `<div class="ev">
               <div class="pallino" style="background:${compiti ? GIALLO : AZZURRO}"></div>
               <span class="ora">${ora || "—"}</span>
               <span class="cosa">${this._esc(this._nomeProprio(e.materia || e.autore || "") || this._capo(e.materia || e.autore || ""))}
-                <small>${this._esc(e.note || "")}</small></span>
+                <small>${this._esc(e.note || "")}</small>${dettaglioCompito}</span>
             </div>`;
           })
           .join("");
