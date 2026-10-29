@@ -66,6 +66,7 @@ mostrano le sole icone.
 - **0.4.6, assenze e colloqui.** Schede in sola lettura mostrano assenze, ritardi e uscite. L'ultima scheda mostra gli orari dei colloqui di oggi e dei 27 giorni successivi. Gli appuntamenti prenotati mostrano i dettagli. La card riduce lo spazio tra le schede.
 - **0.4.7, avviso di aggiornamento.** L'avviso apre la pagina Aggiornamenti di Home Assistant per un utente autorizzato. Home Assistant gestisce l'accesso e l'installazione. L'archivio della release contiene solo l'integrazione.
 - **0.4.8, compiti.** La vista Compiti mostra i compiti del portale famiglia, da oggi in poi, in ordine di scadenza. La card si aggiorna quando i compiti cambiano.
+- **0.4.9, voti, colloqui e anno.** Gli ultimi voti sono in una colonna con la materia. I colloqui liberi mostrano la materia e aprono la pagina ufficiale. Il filtro Automatico usa lo stesso anno scolastico dei dati. L'agenda segnala un errore del portale.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
@@ -229,7 +230,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.8
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.9
     config:
       vista: combo
       anno_scolastico: "26/27"

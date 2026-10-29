@@ -3,6 +3,17 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## 0.4.9 - 2026-10-29
+
+### Changed
+
+- The recent grades list shows one column. The newest grade is first. Each row shows the grade, the date, and the subject.
+- The Colloqui view reads free talk slots from the nested portal data. It shows the subject.
+- A free talk slot opens the official ClasseViva page in the external browser.
+- The card uses the same school year for the menu label and for the data.
+- The Agenda shows an error when the family portal fails. It does not show an empty list.
+- A failed Agenda request keeps the events of the current year.
+
 ## 0.4.8 - 2026-10-28
 
 ### Changed
