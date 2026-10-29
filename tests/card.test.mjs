@@ -336,3 +336,76 @@ test("the recent grades are one row each, newest first, with date and subject", 
   assert.match(CODICE, /\.voto-materia \{[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/);
   assert.match(CODICE, /\.voti \{ display: flex; flex-direction: column/);
 });
+
+function cardAnni(config, salvato = null) {
+  const { contesto, definiti } = nuovoContesto();
+  contesto.localStorage.getItem = () => salvato;
+  carica(contesto);
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  card._hass = hassCon(() => Promise.resolve(RISPOSTA));
+  card.setConfig(config);
+  card._anniServer = [2026, 2025];
+  return card;
+}
+
+function annoDelMenu(card) {
+  const html = card._htmlSelettore();
+  const voce = /<option value="(\w+)" selected>/.exec(html);
+  return { html, valore: voce && voce[1] };
+}
+
+test("Automatic uses the year that its label shows", () => {
+  const card = cardAnni({});
+  const elenco = card._elencoAnni();
+  const automatico = card._annoAutomatico(elenco);
+  assert.equal(card._annoRichiesto(elenco), automatico);
+  const { html, valore } = annoDelMenu(card);
+  assert.equal(valore, "auto");
+  assert.match(html, new RegExp(`Automatico \\(${automatico % 100}/`));
+});
+
+test("a manual choice of the same year gives the same year as Automatic", () => {
+  const card = cardAnni({});
+  const elenco = card._elencoAnni();
+  const automatico = card._annoAutomatico(elenco);
+  card._annoUtente = automatico;
+  assert.equal(card._annoRichiesto(elenco), automatico);
+});
+
+test("a manual choice of a past year is kept", () => {
+  const card = cardAnni({}, "2025");
+  assert.equal(card._annoUtente, 2025);
+  assert.equal(card._annoRichiesto(card._elencoAnni()), 2025);
+  assert.equal(annoDelMenu(card).valore, "2025");
+});
+
+test("with a fixed year and no choice the menu shows the fixed year, not Automatic", () => {
+  const card = cardAnni({ anno_scolastico: "25/26" });
+  assert.equal(card._annoRichiesto(card._elencoAnni()), 2025);
+  assert.equal(annoDelMenu(card).valore, "2025");
+});
+
+test("with a fixed year the choice Automatic uses the automatic year", () => {
+  const card = cardAnni({ anno_scolastico: "25/26" }, "auto");
+  const elenco = card._elencoAnni();
+  assert.equal(card._annoUtente, "auto");
+  assert.equal(card._annoRichiesto(elenco), card._annoAutomatico(elenco));
+  assert.equal(annoDelMenu(card).valore, "auto");
+});
+
+test("a saved choice wins over the fixed year", () => {
+  const card = cardAnni({ anno_scolastico: "25/26" }, "2026");
+  assert.equal(card._annoRichiesto(card._elencoAnni()), 2026);
+  assert.equal(annoDelMenu(card).valore, "2026");
+});
+
+test("the Agenda view shows a clear error when the portal data failed", () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  card.setConfig({});
+  const errore = card._vistaAgenda({ agenda: { attributes: { items: [], stato_dati: "errore" } } });
+  assert.match(errore, /Agenda non disponibile/);
+  const vuoto = card._vistaAgenda({ agenda: { attributes: { items: [], stato_dati: "ok" } } });
+  assert.match(vuoto, /Nessun evento in agenda/);
+});
