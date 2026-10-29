@@ -283,8 +283,12 @@ const STILE = `
   .materia .nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .materia .val { font-weight: 500; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
-  .voti { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-  .voto { display: inline-flex; flex-direction: column; align-items: center; min-width: 44px;
+  .voti { display: flex; flex-direction: column; gap: 7px; margin-top: 8px; }
+  .voto-riga { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .voto-materia { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+                  white-space: nowrap; }
+  .voto { display: inline-flex; flex-direction: column; align-items: flex-end; flex-shrink: 0;
+          min-width: 44px;
           padding: 6px 8px; border-radius: 10px; color: #fff; font-weight: 600; font-size: .95rem;
           transition: transform .18s ease; }
   .voto:hover { transform: translateY(-2px) scale(1.04); }
@@ -1238,16 +1242,23 @@ class CvvDashboardCard extends HTMLElement {
       })
       .join("");
 
-    const recenti = voti
+    const dataBreve = (d) => {
+      const m = /^\d{4}-(\d{2})-(\d{2})/.exec(d || "");
+      return m ? `${m[2]}/${m[1]}` : String(d || "").slice(5);
+    };
+    const recenti = [...voti]
+      .sort((a, b) => String(b.data || "").localeCompare(String(a.data || "")))
       .slice(0, 14)
-      .map(
-        (v, i) =>
-          `<span class="voto" style="--ritardo:${i * 0.035}s;background:${this._colore(
-            v.negativo ? 0 : v.valore
-          )}" title="${this._esc(this._capo(v.materia))} · ${this._esc(v.tipo || "")}">${this._esc(
-            v.voto
-          )}<small>${this._esc((v.data || "").slice(5))}</small></span>`
-      )
+      .map((v, i) => {
+        const materia = this._esc(this._capo(v.materia));
+        return `<div class="voto-riga" style="--ritardo:${i * 0.035}s" title="${materia} · ${this._esc(
+          v.tipo || ""
+        )}"><span class="voto" style="background:${this._colore(
+          v.negativo ? 0 : v.valore
+        )}">${this._esc(v.voto)}<small>${this._esc(
+          dataBreve(v.data)
+        )}</small></span><span class="voto-materia">${materia}</span></div>`;
+      })
       .join("");
 
     return `${testa}${elenco}
