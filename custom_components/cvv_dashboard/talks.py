@@ -28,7 +28,11 @@ Solo funzioni pure, senza Home Assistant, cosi' si provano da sole.
 
 ATTENZIONE: i nomi dei campi della risposta del registro NON sono confermati su
 una risposta reale. `normalizza` accetta piu' nomi possibili per ogni campo e
-lascia vuoto cio' che non trova. Da verificare con una sessione reale.
+lascia vuoto cio' che non trova. I nomi si confrontano senza distinguere
+maiuscole e minuscole. La risposta degli slot puo' essere annidata
+(docente -> frames -> orari liberi): `unisci` la espande. Se la risposta ha dati
+che il parser non riconosce, `unisci` solleva `RispostaNonRiconosciuta`.
+Da verificare con una sessione reale.
 """
 from __future__ import annotations
 
@@ -41,19 +45,29 @@ GIORNI_AVANTI = 27
 STATO_DISPONIBILE = "disponibile"
 STATO_PRENOTATO = "prenotato"
 
+
+class RispostaNonRiconosciuta(ValueError):
+    """La risposta ha dati, ma il parser non ne ricava nessun colloquio."""
+
+
 # Nomi candidati dei campi (non confermati)
-_CHIAVI_DATA = ("data", "date", "day", "start", "begin", "dateTime", "datetime")
-_CHIAVI_INIZIO = ("ora_inizio", "startTime", "timeStart", "from", "start", "begin", "hourStart")
-_CHIAVI_FINE = ("ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd")
+_CHIAVI_DATA = ("data", "date", "day", "start", "begin", "dateTime", "datetime", "frameDate")
+_CHIAVI_INIZIO = (
+    "ora_inizio", "startTime", "timeStart", "from", "start", "begin", "hourStart",
+    "frameTimeFrom", "timeFrom",
+)
+_CHIAVI_FINE = ("ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd", "frameTimeTo", "timeTo")
 _CHIAVI_DOCENTE = ("docente", "teacherName", "teacher", "teacherDesc", "name")
-_CHIAVI_AULA = ("aula", "room", "place", "location")
+_CHIAVI_MATERIA = ("materia", "subjects", "subject", "subjectDesc")
+_CHIAVI_AULA = ("aula", "room", "place", "location", "framePlace")
+_CHIAVI_ORARI_LIBERI = ("freeSlotTimeRange", "freeSlots")
 _CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl")
 _CHIAVI_NOTE = ("note", "notes", "description", "desc", "message")
 _CHIAVI_MODO = ("modalita", "mode", "type", "talkType", "remote")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
 _CHIAVI_DOCENTE_ID = ("teacherId", "docente_id", "idTeacher")
 _CHIAVI_PRENOTATO = ("prenotato", "booked", "isBooked", "reserved", "taken")
-_LISTE_SLOT = ("frames", "slots", "items", "teachers", "talks")
+_LISTE_SLOT = ("teacher", "teachers", "frames", "slots", "items")
 _LISTE_PRENOTATI = ("talks", "mytalks", "items", "bookings")
 
 
@@ -68,8 +82,9 @@ def formato_richiesta(giorno: date) -> str:
 
 
 def _prima(voce: dict, chiavi: tuple[str, ...]):
+    minuscole = {str(k).lower(): v for k, v in voce.items()}
     for chiave in chiavi:
-        valore = voce.get(chiave)
+        valore = minuscole.get(chiave.lower())
         if valore not in (None, "", [], {}):
             return valore
     return None
@@ -103,6 +118,20 @@ def _ora(valore) -> str:
     return ""
 
 
+def _materia(valore) -> str:
+    """Materie come testo unico: accetta un testo o un elenco di testi e oggetti."""
+    if not isinstance(valore, list):
+        valore = [valore]
+    nomi = []
+    for v in valore:
+        if isinstance(v, dict):
+            v = _prima(v, ("subjectDesc", "description", "desc", "name", "materia"))
+        nome = _testo(v)
+        if nome and nome not in nomi:
+            nomi.append(nome)
+    return ", ".join(nomi)
+
+
 def normalizza(voce, stato: str | None = None) -> dict | None:
     """Porta una voce del registro nello schema dell'integrazione."""
     if not isinstance(voce, dict):
@@ -125,6 +154,7 @@ def normalizza(voce, stato: str | None = None) -> dict | None:
         "ora_inizio": inizio,
         "ora_fine": _ora(_prima(voce, _CHIAVI_FINE)),
         "docente": _testo(_prima(voce, _CHIAVI_DOCENTE)),
+        "materia": _materia(_prima(voce, _CHIAVI_MATERIA)),
         "stato": stato or (STATO_PRENOTATO if prenotato else STATO_DISPONIBILE),
         "modalita": modo,
         "aula": _testo(_prima(voce, _CHIAVI_AULA)),
@@ -134,27 +164,91 @@ def normalizza(voce, stato: str | None = None) -> dict | None:
 
 
 def _elenco(corpo, chiavi: tuple[str, ...]) -> list:
+    """Voci di una risposta: l'elenco principale o gli elenchi sotto le chiavi note.
+
+    Solleva `RispostaNonRiconosciuta` se la risposta ha contenuto ma nessuna chiave nota.
+    """
+    if corpo in (None, "", [], {}):
+        return []
     if isinstance(corpo, list):
         return corpo
     if isinstance(corpo, dict):
-        for chiave in chiavi:
-            if isinstance(corpo.get(chiave), list):
-                return corpo[chiave]
-    return []
+        minuscole = {str(k).lower(): v for k, v in corpo.items()}
+        trovate = [minuscole[c.lower()] for c in chiavi if isinstance(minuscole.get(c.lower()), list)]
+        if trovate:
+            return [voce for elenco in trovate for voce in elenco]
+    raise RispostaNonRiconosciuta("nessun elenco noto nella risposta")
+
+
+def _orari(voce: dict) -> list[dict]:
+    """Un frame con orari liberi diventa una voce per ogni orario libero."""
+    liberi = _prima(voce, _CHIAVI_ORARI_LIBERI)
+    if not isinstance(liberi, list):
+        liberi = [liberi] if liberi else []
+    risultato = []
+    for libero in liberi:
+        if isinstance(libero, dict):
+            ora_inizio = _ora(_prima(libero, _CHIAVI_INIZIO))
+            ora_fine = _ora(_prima(libero, _CHIAVI_FINE))
+        else:
+            ore = re.findall(r"\d{1,2}[:.]\d{2}", _testo(libero))
+            ora_inizio = _ora(ore[0]) if ore else ""
+            ora_fine = _ora(ore[1]) if len(ore) > 1 else ""
+        if ora_inizio:
+            # senza id: l'id del frame vale per tutto il gruppo di orari
+            copia = {k: v for k, v in voce.items() if str(k).lower() not in ("id", "frameid")}
+            copia["ora_inizio"] = ora_inizio
+            copia["ora_fine"] = ora_fine
+            risultato.append(copia)
+    return risultato or [voce]
+
+
+def _appiattisci(voci: list) -> list:
+    """Espande docente -> frames -> orari liberi in voci piatte, con docente e materia."""
+    piatte = []
+    for voce in voci:
+        if not isinstance(voce, dict):
+            piatte.append(voce)
+            continue
+        frames = {str(k).lower(): v for k, v in voce.items()}.get("frames")
+        if not isinstance(frames, list):
+            piatte.extend(_orari(voce))
+            continue
+        for frame in frames:
+            if not isinstance(frame, dict):
+                piatte.append(frame)
+                continue
+            unita = dict(frame)
+            for chiave in _CHIAVI_DOCENTE + _CHIAVI_MATERIA + _CHIAVI_DOCENTE_ID:
+                valore = _prima(voce, (chiave,))
+                if valore is not None and _prima(frame, (chiave,)) is None:
+                    unita[chiave] = valore
+            piatte.extend(_orari(unita))
+    return piatte
+
+
+def _leggi(voci: list, stato: str | None = None) -> list[dict]:
+    candidate = _appiattisci(voci)
+    lette = [v for v in (normalizza(c, stato) for c in candidate) if v]
+    if candidate and not lette:
+        raise RispostaNonRiconosciuta("voci senza data riconosciuta")
+    return lette
 
 
 def unisci(corpo_slot, corpo_prenotati) -> list[dict]:
-    """Un solo elenco con gli slot liberi e quelli prenotati, senza doppioni."""
-    voci: list[dict] = []
-    for grezza in _elenco(corpo_slot, _LISTE_SLOT):
-        voce = normalizza(grezza)
-        if voce:
-            voci.append(voce)
+    """Un solo elenco con gli slot liberi e quelli prenotati, senza doppioni.
 
-    for grezza in _elenco(corpo_prenotati, _LISTE_PRENOTATI):
-        prenotata = normalizza(grezza, STATO_PRENOTATO)
-        if not prenotata:
-            continue
+    Solleva `RispostaNonRiconosciuta` se una risposta ha dati che non si leggono.
+    """
+    voci = _leggi(_elenco(corpo_slot, _LISTE_SLOT))
+    prenotati = _elenco(corpo_prenotati, _LISTE_PRENOTATI)
+    if isinstance(corpo_slot, dict):
+        # la risposta degli slot puo' avere anche i colloqui prenotati
+        extra = {str(k).lower(): v for k, v in corpo_slot.items()}.get("talks")
+        if isinstance(extra, list):
+            prenotati = prenotati + extra
+
+    for prenotata in _leggi(prenotati, STATO_PRENOTATO):
         for i, voce in enumerate(voci):
             stessa_id = prenotata["id"] and voce["id"] == prenotata["id"]
             stesso_posto = (
