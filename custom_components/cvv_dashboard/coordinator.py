@@ -166,6 +166,8 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
                 continue
             if chiave == "compiti" and data.get("compiti_stato") != "errore":
                 continue
+            if chiave == "agenda" and data.get("agenda_stato") != "errore":
+                continue
             if not data.get(chiave) and vecchi.get(chiave):
                 data[chiave] = vecchi[chiave]
                 _LOGGER.debug("Sezione '%s' non aggiornata: tengo il dato precedente", chiave)
@@ -272,7 +274,20 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         """
         data.setdefault("agenda_fonte", "rest")
         web = await self._chiedi_al_portale("agenda", self.web.async_fetch_agenda)
+        # "errore" only when no portal request answered; an empty answer is valid.
+        data["agenda_stato"] = (web or {}).get("stato", "errore")
         if not web or not web.get("agenda"):
+            return
+
+        # The previous year is only a fallback for a year that has not started.
+        # It must not replace the REST events of the current year.
+        anno_piano = self.api.piani_anno()[0][1]
+        anno_web = web.get("anno_inizio")
+        if (
+            data.get("agenda") and anno_piano is not None
+            and anno_web is not None and anno_web != anno_piano
+        ):
+            data["agenda_stato"] = "ok"
             return
 
         data["agenda"] = web["agenda"]

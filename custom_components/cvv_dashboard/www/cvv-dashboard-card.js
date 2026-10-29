@@ -99,9 +99,13 @@ function annoDelGiorno(oggi = new Date()) {
 
 const PREFISSO_ANNO = "cvv-dashboard-card:anno:";
 
+// Scelta esplicita di "Automatico": vale anche quando la configurazione ha un anno fisso.
+const ANNO_AUTO = "auto";
+
 function leggiAnnoSalvato(chiave) {
   try {
     const valore = localStorage.getItem(PREFISSO_ANNO + chiave);
+    if (valore === ANNO_AUTO) return ANNO_AUTO;
     return valore ? annoInizio(valore) : null;
   } catch (e) {
     return null; // storage non disponibile
@@ -705,6 +709,7 @@ class CvvDashboardCard extends HTMLElement {
   _annoRichiesto(elenco) {
     const fisso = annoInizio(this._config.anno_scolastico);
     if (this._config.selettore_anno === false) return fisso;
+    if (this._annoUtente === ANNO_AUTO) return this._annoAutomatico(elenco);
     if (this._annoUtente !== null) return this._annoUtente;
     if (fisso !== null) return fisso;
     return this._annoAutomatico(elenco);
@@ -761,7 +766,11 @@ class CvvDashboardCard extends HTMLElement {
     if (this._config.selettore_anno === false || this._anniMenu.length < 2) return "";
     const oggi = annoDelGiorno();
     const automatico = this._annoAutomatico(this._anniMenu);
-    const scelto = this._annoUtente === null ? "auto" : String(this._annoUtente);
+    // Senza scelta dell'utente il menu mostra l'anno che la card usa davvero.
+    const fisso = annoInizio(this._config.anno_scolastico);
+    const scelto = this._annoUtente === ANNO_AUTO || (this._annoUtente === null && fisso === null)
+      ? "auto"
+      : String(this._annoUtente === null ? fisso : this._annoUtente);
     const voci = [
       `<option value="auto" ${scelto === "auto" ? "selected" : ""}>Automatico (${automatico !== null ? annoEtichetta(automatico) : "-"})</option>`,
       ...this._anniMenu.map(({ anno, etichetta }) =>
@@ -777,7 +786,7 @@ class CvvDashboardCard extends HTMLElement {
     const menu = this.shadowRoot.querySelector(".selanno");
     if (!menu) return;
     menu.addEventListener("change", () => {
-      const anno = menu.value === "auto" ? null : Number(menu.value);
+      const anno = menu.value === "auto" ? ANNO_AUTO : Number(menu.value);
       this._annoUtente = anno;
       salvaAnno(this._chiaveAnno(), anno);
       this._impronta = null;
@@ -1543,6 +1552,7 @@ class CvvDashboardCard extends HTMLElement {
     const agenda = this._attr(ent.agenda, "items", []) || [];
     const compitiCard = this._attr(ent.compiti, "items", null);
     const erroreCompiti = soloCompiti && this._attr(ent.compiti, "stato_dati") === "errore";
+    const erroreAgenda = !soloCompiti && this._attr(ent.agenda, "stato_dati") === "errore";
     // Agenda: only today and later days, in ascending order. The date is read
     // at each render, so it is always the current local date. A school year that
     // is already over keeps all its days.
@@ -1563,6 +1573,8 @@ class CvvDashboardCard extends HTMLElement {
     if (!items.length) {
       const testo = erroreCompiti
         ? "Compiti non disponibili. Verifica la connessione al portale ClasseViva."
+        : erroreAgenda
+          ? "Agenda non disponibile. Verifica la connessione al portale ClasseViva."
         : soloCompiti
           ? "Nessun compito con scadenza da oggi in poi."
           : "Nessun evento in agenda.";
