@@ -787,6 +787,7 @@ def card_data(coordinator: CvvDashboardCoordinator, entry_id: str) -> dict:
             if _in_school_year(item.get("inizio"), year_start)
         ]
     agenda_attributes["totale"] = len(agenda_attributes["items"])
+    agenda_attributes["stato_dati"] = data.get("agenda_stato")
 
     compiti_items = compiti_per_card(
         normalizza_compiti(data.get("compiti"), data.get("agenda"))

@@ -272,6 +272,8 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         """
         data.setdefault("agenda_fonte", "rest")
         web = await self._chiedi_al_portale("agenda", self.web.async_fetch_agenda)
+        # "errore" only when the portal call failed; an empty answer is a valid result.
+        data["agenda_stato"] = "ok" if web is not None else "errore"
         if not web or not web.get("agenda"):
             return
 
