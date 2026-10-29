@@ -1031,12 +1031,17 @@ class CvvDashboardWebApi:
 
     async def async_fetch_agenda(self, piani: list[tuple[str, int | None, bool]]) -> dict:
         """Scarica l'agenda (compiti, annotazioni, prenotazioni) con gli stessi piani."""
-        risultato: dict = {"agenda": [], "anno": None, "fonte": None}
+        # "stato" is "ok" when at least one request answered, also with an empty list.
+        risultato: dict = {
+            "agenda": [], "anno": None, "anno_inizio": None, "fonte": None, "stato": "errore",
+        }
 
         for host, anno, storico in piani:
             eventi = await self._con_sessione(
                 host, storico, lambda: self._scarica_eventi(host, anno), "agenda"
             )
+            if eventi is not None:
+                risultato["stato"] = "ok"
             if not eventi:
                 _LOGGER.debug("Nessun evento in agenda su %s (anno %s)", host, anno)
                 continue
@@ -1047,6 +1052,7 @@ class CvvDashboardWebApi:
 
             risultato["agenda"] = normalizzati
             risultato["anno"] = f"{anno}/{anno + 1}" if anno else None
+            risultato["anno_inizio"] = anno
             risultato["fonte"] = host
             return risultato
 
