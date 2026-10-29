@@ -159,7 +159,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         for chiave in self._SEZIONI:
             # i colloqui si tengono solo dopo una richiesta fallita: un elenco
             # vuoto ma valido significa che non ci sono piu' slot
-            if chiave == "colloqui" and data.get("colloqui_stato") != "errore":
+            if chiave == "colloqui" and data.get("colloqui_stato") not in ("errore", "errore_dati"):
                 continue
             # le assenze si tengono solo dopo una richiesta fallita, non per un elenco vuoto valido
             if chiave == "assenze" and data.get("assenze_stato") != "errore":

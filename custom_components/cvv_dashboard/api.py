@@ -51,7 +51,7 @@ import aiohttp
 
 from .const import ANNO_ULTIMO, API_KEY, USER_AGENT, BASE_HOST
 from .absences import normalizza as normalizza_assenze
-from .talks import formato_richiesta, unisci
+from .talks import RispostaNonRiconosciuta, formato_richiesta, unisci
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -433,7 +433,12 @@ class CvvDashboardApi:
         if status != 200:
             _LOGGER.debug("Colloqui: richiesta dei prenotati fallita (%s)", status)
             return "errore", []
-        return "ok", unisci(slot, prenotati)
+        try:
+            return "ok", unisci(slot, prenotati)
+        except RispostaNonRiconosciuta as err:
+            # una risposta con dati sconosciuti non e' un elenco vuoto valido
+            _LOGGER.warning("Colloqui: risposta non riconosciuta (%s)", err)
+            return "errore_dati", []
 
     async def leggi_comunicazione(self, evt: str, pub: str | int) -> str | None:
         """Testo di una comunicazione della bacheca.

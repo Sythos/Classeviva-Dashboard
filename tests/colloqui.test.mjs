@@ -61,7 +61,26 @@ test("the talks view shows both statuses in date order and hides a day outside t
   assert.doesNotMatch(html, /Docente Fuori/);
   assert.match(html, /Disponibile/);
   assert.match(html, /Prenotato/);
-  assert.equal((html.match(/<button/g) || []).length, 1);
+  // one button opens the details, one button opens the official page
+  assert.equal((html.match(/<button/g) || []).length, 2);
+  assert.equal((html.match(/data-colloquio=/g) || []).length, 1);
+});
+
+test("the talks view shows the subject and an official link for a free slot", () => {
+  const { card, ent } = nuovaScheda([
+    { data: giorno(1), ora_inizio: "09:00", docente: "Docente A", materia: "Materia X", stato: "disponibile",
+      link: "https://evil.example.org/x" },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.match(html, /Docente A – Materia X/);
+  assert.match(html, /data-apri-colloquio="https:\/\/web\.spaggiari\.eu\/"/);
+  assert.equal(card._linkColloqui("http://web.spaggiari.eu/a"), "https://web.spaggiari.eu/");
+  assert.equal(card._linkColloqui("https://web.spaggiari.eu/p?x=1"), "https://web.spaggiari.eu/p?x=1");
+});
+
+test("the talks view shows a data error state", () => {
+  const { card, ent } = nuovaScheda([], "errore_dati");
+  assert.match(card._vistaColloqui(ent), /Errore dati/);
 });
 
 test("the talks view includes today and day 27 and hides day 28", () => {

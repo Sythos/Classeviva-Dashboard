@@ -315,8 +315,7 @@ const STILE = `
   .riga-colloquio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%;
                     background: none; border: none; padding: 0; font: inherit; text-align: left;
                     color: var(--primary-text-color); }
-  button.riga-colloquio { cursor: pointer; }
-  .riga-colloquio .data, .riga-colloquio .ora { font-size: .82rem; font-variant-numeric: tabular-nums; }
+  button.riga-colloquio { cursor: pointer; }  .riga-colloquio .data, .riga-colloquio .ora { font-size: .82rem; font-variant-numeric: tabular-nums; }
   .riga-colloquio .tit { flex: 1; min-width: 120px; }
   .colloquio.prenotato .riga-colloquio { color: var(--success-color, #2e7d32); font-weight: 700; }
   .colloquio .dettagli { font-size: .85rem; margin-top: 6px; padding-left: 8px;
@@ -923,6 +922,13 @@ class CvvDashboardCard extends HTMLElement {
         if (dettagli) dettagli.hidden = aperto;
       })
     );
+    this.shadowRoot.querySelectorAll("[data-apri-colloquio]").forEach((b) =>
+      b.addEventListener("click", () => {
+        // il link è già verificato da _linkColloqui; si apre una pagina, non si invia nulla
+        const url = this._linkColloqui(b.dataset.apriColloquio);
+        window.open(url, "_blank", "noopener,noreferrer");
+      })
+    );
     this.shadowRoot.querySelectorAll("[data-materia]").forEach((b) =>
       b.addEventListener("click", () => this._apriMateria(b.dataset.materia, ent))
     );
@@ -1466,6 +1472,13 @@ class CvvDashboardCard extends HTMLElement {
 
   // --------------------------------------------------------------- colloqui
 
+  /** Link della pagina ufficiale: solo https su un dominio ClasseViva, altrimenti la pagina fissa. */
+  _linkColloqui(link) {
+    const base = "https://web.spaggiari.eu/";
+    const m = /^https:\/\/([a-z0-9.-]+)(?::443)?(?:[/?#][^\s"'<>]*)?$/i.exec(String(link || ""));
+    return m && /(^|\.)(spaggiari\.eu|classeviva\.it)$/i.test(m[1]) ? m[0] : base;
+  }
+
   /** Colloqui con i docenti, in sola lettura: nessun comando di prenotazione. */
   _vistaColloqui(ent) {
     const tutti = this._attr(ent.colloqui, "items", []) || [];
@@ -1481,6 +1494,8 @@ class CvvDashboardCard extends HTMLElement {
     if (!items.length) {
       if (!ent.colloqui || stato === "errore")
         return `<div class="vuoto">Colloqui non disponibili.</div>`;
+      if (stato === "errore_dati")
+        return `<div class="vuoto">Errore dati: la risposta dei colloqui non è riconosciuta.</div>`;
       if (stato === "non_disponibile")
         return `<div class="vuoto">Funzione non disponibile per questo account.</div>`;
       return `<div class="vuoto">Nessun colloquio disponibile nei prossimi 28 giorni.</div>`;
@@ -1495,11 +1510,12 @@ class CvvDashboardCard extends HTMLElement {
       const prenotato = c.stato === "prenotato";
       const corpo = `<span class="data">${this._esc(giorno)}</span>
           <span class="ora">${this._esc(ora)}</span>
-          <span class="tit">${this._esc(c.docente || "")}</span>
+          <span class="tit">${this._esc([c.docente, c.materia].filter(Boolean).join(" – "))}</span>
           <span class="stato-colloquio">${prenotato ? "Prenotato" : "Disponibile"}</span>`;
       if (!prenotato) {
+        // sola lettura: il bottone apre la pagina ufficiale nel browser, nessuna scrittura
         return `<div class="colloquio" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
-          <div class="riga-colloquio">${corpo}</div></div>`;
+          <button class="riga-colloquio" data-apri-colloquio="${this._esc(this._linkColloqui(c.link))}">${corpo}</button></div>`;
       }
       const chiave = `${c.data}|${c.ora_inizio}|${c.docente}`;
       const aperto = this._espansi.has("colloquio:" + chiave);

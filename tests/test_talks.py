@@ -88,8 +88,71 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(voci[0]["docente"], "")
         self.assertEqual(voci[0]["link"], "")
 
-    def test_entry_without_date_is_dropped(self):
-        self.assertEqual(talks.unisci({"frames": [{"teacherName": "X"}]}, None), [])
+    def test_entry_without_date_raises(self):
+        with self.assertRaises(talks.RispostaNonRiconosciuta):
+            talks.unisci({"frames": [{"teacherName": "X"}]}, None)
+
+    def test_unknown_body_raises(self):
+        with self.assertRaises(talks.RispostaNonRiconosciuta):
+            talks.unisci({"Qualcosa": "altro"}, None)
+
+    def test_empty_valid_body_is_empty(self):
+        self.assertEqual(talks.unisci({"Teacher": [], "Talks": []}, []), [])
+
+
+class NestedTests(unittest.TestCase):
+    CORPO = {
+        "Teacher": [
+            {
+                "TeacherName": "Docente A",
+                "Subjects": ["Materia X", {"SubjectDesc": "Materia Y"}],
+                "Frames": [
+                    {
+                        "FrameDate": "2026-10-22", "FrameTimeFrom": "09:00", "FrameTimeTo": "09:30",
+                        "FramePlace": "Aula 2",
+                        "FreeSlotTimeRange": ["09:00 - 09:10", "09:10 - 09:20", "09:20 - 09:30"],
+                    },
+                ],
+            },
+            {
+                "TeacherName": "Docente B",
+                "Subjects": [],
+                "Frames": [{"FrameDate": "2026-10-23", "FrameTimeFrom": "15:00", "FrameTimeTo": "15:10"}],
+            },
+        ],
+        "Talks": [],
+    }
+
+    def test_free_slots_without_bookings(self):
+        voci = talks.unisci(self.CORPO, [])
+        self.assertEqual(len(voci), 4)
+        self.assertTrue(all(v["stato"] == "disponibile" for v in voci))
+        self.assertEqual([v["ora_inizio"] for v in voci], ["09:00", "09:10", "09:20", "15:00"])
+        self.assertEqual(voci[0]["ora_fine"], "09:10")
+        self.assertEqual(voci[0]["docente"], "Docente A")
+        self.assertEqual(voci[0]["materia"], "Materia X, Materia Y")
+        self.assertEqual(voci[0]["aula"], "Aula 2")
+        self.assertEqual(voci[3]["materia"], "")
+
+    def test_booking_wins_over_the_matching_slot(self):
+        prenotati = {"talks": [
+            {"teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:10", "room": "Aula 9"},
+        ]}
+        voci = talks.unisci(self.CORPO, prenotati)
+        self.assertEqual(len(voci), 4)
+        stati = [v["stato"] for v in voci]
+        self.assertEqual(stati, ["disponibile", "prenotato", "disponibile", "disponibile"])
+        self.assertEqual(voci[1]["aula"], "Aula 9")
+        self.assertEqual(voci[1]["materia"], "Materia X, Materia Y")
+
+    def test_nested_items_sort_by_date_and_time(self):
+        voci = talks.filtra_ordina(talks.unisci(self.CORPO, None), date(2026, 10, 21))
+        self.assertEqual([v["data"] for v in voci][-1], "2026-10-23")
+        self.assertEqual(voci[0]["ora_inizio"], "09:00")
+
+    def test_teacher_without_known_fields_raises(self):
+        with self.assertRaises(talks.RispostaNonRiconosciuta):
+            talks.unisci({"Teacher": [{"TeacherName": "X", "Frames": [{"Altro": 1}]}]}, None)
 
 
 if __name__ == "__main__":
