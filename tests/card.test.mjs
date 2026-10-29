@@ -315,3 +315,24 @@ test("a failing HACS command hides the alert and does not throw", async () => {
   await new Promise((r) => setImmediate(r));
   assert.equal(titolo.figli.length, 0);
 });
+
+test("the recent grades are one row each, newest first, with date and subject", () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  card.setConfig({});
+  const lunga = "Educazione civica, cittadinanza e costituzione";
+  const items = [
+    { data: "2026-10-20", materia: "storia", voto: "6", valore: 6, tipo: "Orale" },
+    { data: "2026-10-26", materia: lunga, voto: "8+", valore: 8.25, tipo: "Scritto" },
+  ];
+  for (let i = 0; i < 15; i++) items.push({ data: "2026-09-01", materia: "Latino", voto: "7", valore: 7 });
+  const html = card._vistaVoti({ voti: { attributes: { items } } });
+  assert.equal((html.match(/class="voto-riga"/g) || []).length, 14);
+  assert.ok(html.indexOf("26/10") < html.indexOf("20/10"));
+  assert.match(html, new RegExp(`>8\\+<small>26/10</small></span><span class="voto-materia">${lunga}</span>`));
+  assert.match(html, new RegExp(`title="${lunga} · Scritto"`));
+  assert.match(html, /<span class="voto-materia">Storia<\/span>/);
+  assert.match(CODICE, /\.voto-materia \{[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap/);
+  assert.match(CODICE, /\.voti \{ display: flex; flex-direction: column/);
+});
