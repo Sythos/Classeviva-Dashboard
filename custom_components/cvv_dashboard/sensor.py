@@ -47,6 +47,7 @@ from .const import DOMAIN
 from .coordinator import CvvDashboardCoordinator
 from .download import DOWNLOAD_URL
 from .homeworks import normalizza as normalizza_compiti, per_card as compiti_per_card
+from .lessons import ordina as ordina_lezioni
 from .talks import STATO_PRENOTATO, filtra_ordina, intervallo
 from .web import (
     CATEGORIA_ANNOTAZIONE,
@@ -91,6 +92,7 @@ NOTE_TESTO_MAX = 300
 SCRUTINI_LIMIT = 20
 TALKS_LIMIT = 40
 ABSENCES_LIMIT = 60
+LESSONS_LIMIT = 60
 
 
 def _in_school_year(value, year_start: int) -> bool:
@@ -118,6 +120,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             AgendaSensor(coordinator, eid),
             TalksSensor(coordinator, eid),
             AbsencesSensor(coordinator, eid),
+            LessonsSensor(coordinator, eid),
         ]
     )
 
@@ -691,6 +694,32 @@ class AbsencesSensor(_Base):
             "totale": len(voci),
             "da_giustificare": sum(1 for v in voci if not v.get("giustificata")),
             "items": voci if limit is None else voci[:limit],
+        }
+
+
+class LessonsSensor(_Base):
+    """Lezioni dell'ultima settimana: solo lettura. Lo stato conta quelle di oggi."""
+
+    _key = "lessons"
+    _label = "Lezioni"
+    _icon = "mdi:book-open-page-variant"
+
+    def _voci(self) -> list[dict]:
+        voci = [v for v in self._data.get("lezioni") or [] if isinstance(v, dict)]
+        return ordina_lezioni(voci)
+
+    @property
+    def native_value(self):
+        oggi = dt_util.now().date().isoformat()
+        return sum(1 for v in self._voci() if v.get("data") == oggi)
+
+    @property
+    def extra_state_attributes(self):
+        voci = self._voci()
+        return {
+            "totale": len(voci),
+            "stato": self._data.get("lezioni_stato"),
+            "items": voci[:LESSONS_LIMIT],
         }
 
 

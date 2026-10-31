@@ -70,8 +70,11 @@ CALENDARI = (
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator: CvvDashboardCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
-        CvvDashboardCalendar(coordinator, suffisso, etichetta, icona, tipi)
-        for suffisso, etichetta, icona, tipi in CALENDARI
+        [
+            CvvDashboardCalendar(coordinator, suffisso, etichetta, icona, tipi)
+            for suffisso, etichetta, icona, tipi in CALENDARI
+        ]
+        + [CvvDashboardLessonsCalendar(coordinator)]
     )
 
 
@@ -207,3 +210,33 @@ class CvvDashboardCalendar(CoordinatorEntity, CalendarEntity):
             if e_end >= start_date and e_start <= end_date:
                 out.append(ev)
         return out
+
+
+def _lesson_event(item: dict) -> CalendarEvent | None:
+    """Una lezione diventa un evento di tutto il giorno: l'orario non e' affidabile."""
+    try:
+        giorno = datetime.fromisoformat(str(item.get("data") or "")[:10]).date()
+    except ValueError:
+        return None
+    materia = item.get("materia") or item.get("tipo") or "Lezione"
+    argomento = item.get("argomento") or ""
+    summary = f"{materia}: {argomento[:60]}" if argomento else materia
+    return CalendarEvent(
+        start=giorno,
+        end=giorno + timedelta(days=1),
+        summary=summary,
+        description=argomento or None,
+        location=item.get("docente") or None,
+    )
+
+
+class CvvDashboardLessonsCalendar(CvvDashboardCalendar):
+    """Lezioni dell'ultima settimana: argomenti svolti, in sola lettura."""
+
+    def __init__(self, coordinator: CvvDashboardCoordinator) -> None:
+        super().__init__(coordinator, "lezioni", "Lezioni", "mdi:book-open-page-variant", set())
+
+    def _all_events(self) -> list[CalendarEvent]:
+        voci = (self.coordinator.data or {}).get("lezioni") or []
+        eventi = (_lesson_event(v) for v in voci if isinstance(v, dict))
+        return [ev for ev in eventi if ev]
