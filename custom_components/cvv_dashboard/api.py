@@ -51,6 +51,7 @@ import aiohttp
 
 from .const import ANNO_ULTIMO, API_KEY, USER_AGENT, BASE_HOST
 from .absences import normalizza as normalizza_assenze
+from .lessons import normalizza as normalizza_lezioni
 from .talks import RispostaNonRiconosciuta, formato_richiesta, unisci
 
 _LOGGER = logging.getLogger(__name__)
@@ -392,6 +393,28 @@ class CvvDashboardApi:
     def colloqui_possibili(self) -> bool:
         """False per un account studente: i colloqui sono per i genitori."""
         return self.ident_prefisso != "S"
+
+    async def async_fetch_lezioni(self, inizio, fine) -> tuple[str, list[dict]]:
+        """Lezioni (argomenti svolti) dell'anno in corso, in sola lettura.
+
+        Ritorna (esito, voci). Esito: "ok", "non_disponibile" (accesso negato o
+        funzione assente) oppure "errore". La rotta e i campi non sono confermati
+        su un registro reale. Un 401 o 403 non azzera il token.
+        """
+        host, anno, storico = self.piani_anno()[0]
+        token = self._token_per(host)
+        if storico or not anno or not token:
+            return "ok", []
+        periodo = f"{formato_richiesta(inizio)}/{formato_richiesta(fine)}"
+        status, body = await self._get(
+            host, f"/rest/v1/students/{self.student_id}/lessons/{periodo}", token
+        )
+        if status in (401, 403, 404):
+            return "non_disponibile", []
+        if status != 200 or not isinstance(body, (dict, list)):
+            _LOGGER.debug("Lezioni: richiesta fallita (%s)", status)
+            return "errore", []
+        return "ok", normalizza_lezioni(body)
 
     async def async_fetch_colloqui(self, inizio, fine) -> tuple[str, list[dict]]:
         """Slot dei colloqui e colloqui prenotati, in sola lettura (solo GET).

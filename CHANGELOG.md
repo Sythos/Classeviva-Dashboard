@@ -3,6 +3,13 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Added
+
+- A new sensor shows the lessons of the last 7 days: subject, hour, teacher, and topic.
+- A new calendar shows the same lessons. The response shape of the lessons endpoint is not confirmed on a real register.
+
 ## 0.4.9 - 2026-10-29
 
 ### Changed

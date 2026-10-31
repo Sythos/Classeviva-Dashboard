@@ -40,6 +40,7 @@ from homeassistant.util import dt as dt_util
 
 from .api import CvvDashboardApi, CvvDashboardAuthError, CvvDashboardApiError
 from .const import DOMAIN, UPDATE_MINUTES
+from .lessons import intervallo as intervallo_lezioni
 from .talks import intervallo
 from .web import CvvDashboardWebApi, CvvDashboardWebError, chiave_titolo
 
@@ -135,6 +136,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
         await self._aggiungi_note_web(data)
         await self._aggiungi_scrutini_web(data)
         await self._aggiungi_colloqui(data)
+        await self._aggiungi_lezioni(data)
         # NB: i testi delle comunicazioni non lette NON si scaricano qui.
         # Vedi async_testi_bacheca: si prendono solo su richiesta esplicita.
         self._conserva_precedenti(data)
@@ -144,7 +146,7 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
     _SEZIONI = (
         "voti", "medie_materia", "medie_periodo", "periodi", "media", "grades_year",
         "agenda", "compiti", "note_web", "scrutini", "noticeboard", "didactics", "notes",
-        "colloqui", "assenze",
+        "colloqui", "assenze", "lezioni",
     )
 
     def _conserva_precedenti(self, data: dict) -> None:
@@ -163,6 +165,8 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
                 continue
             # le assenze si tengono solo dopo una richiesta fallita, non per un elenco vuoto valido
             if chiave == "assenze" and data.get("assenze_stato") != "errore":
+                continue
+            if chiave == "lezioni" and data.get("lezioni_stato") != "errore":
                 continue
             if chiave == "compiti" and data.get("compiti_stato") != "errore":
                 continue
@@ -201,6 +205,22 @@ class CvvDashboardCoordinator(DataUpdateCoordinator):
             esito, voci = "errore", []
         data["colloqui_stato"] = esito
         data["colloqui"] = voci
+
+    async def _aggiungi_lezioni(self, data: dict) -> None:
+        """Lezioni dell'ultima settimana, in sola lettura.
+
+        Una richiesta fallita non fa fallire l'aggiornamento: si registra
+        l'esito e si tiene l'elenco precedente.
+        """
+        inizio, fine = intervallo_lezioni(dt_util.now().date())
+        try:
+            async with asyncio.timeout(30):
+                esito, voci = await self.api.async_fetch_lezioni(inizio, fine)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Lezioni non disponibili: %s", err)
+            esito, voci = "errore", []
+        data["lezioni_stato"] = esito
+        data["lezioni"] = voci
 
     async def _aggiungi_scrutini_web(self, data: dict) -> None:
         """Pagelle ed esiti di scrutinio pubblicati per lo studente."""
