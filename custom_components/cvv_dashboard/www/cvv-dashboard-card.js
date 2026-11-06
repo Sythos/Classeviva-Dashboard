@@ -1496,8 +1496,14 @@ class CvvDashboardCard extends HTMLElement {
     const primo = this._attr(ent.colloqui, "dal", "") || "";
     const ultimo = this._attr(ent.colloqui, "al", "") || "";
     const items = tutti
-      .filter((c) => (!primo || (c.data || "") >= primo) && (!ultimo || (c.data || "") <= ultimo))
+      .filter(
+        (c) =>
+          (c.stato === "prenotato" && !c.data) ||
+          ((!primo || (c.data || "") >= primo) && (!ultimo || (c.data || "") <= ultimo))
+      )
       .sort((a, b) =>
+        // booked talks without a date go last
+        (a.data ? 0 : 1) - (b.data ? 0 : 1) ||
         `${a.data || ""} ${a.ora_inizio || ""}`.localeCompare(`${b.data || ""} ${b.ora_inizio || ""}`)
       );
     if (!items.length) {
@@ -1517,31 +1523,18 @@ class CvvDashboardCard extends HTMLElement {
         : d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
       const ora = [c.ora_inizio, c.ora_fine].filter(Boolean).join("–");
       const prenotato = c.stato === "prenotato";
+      if (prenotato) {
+        // booked talk: status only; details stay on the official ClasseViva site or app
+        return `<div class="colloquio prenotato" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
+          <div class="riga-colloquio"><span class="stato-colloquio">Prenotato</span></div></div>`;
+      }
       const corpo = `<span class="data">${this._esc(giorno)}</span>
           <span class="ora">${this._esc(ora)}</span>
           <span class="tit">${this._esc([c.docente, c.materia].filter(Boolean).join(" – "))}</span>
-          <span class="stato-colloquio">${prenotato ? "Prenotato" : "Disponibile"}</span>`;
-      if (!prenotato) {
-        // sola lettura: il bottone apre la pagina ufficiale nel browser, nessuna scrittura
-        return `<div class="colloquio" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
-          <button class="riga-colloquio" data-apri-colloquio="${this._esc(this._linkColloqui(c.link))}">${corpo}</button></div>`;
-      }
-      const chiave = `${c.data}|${c.ora_inizio}|${c.docente}`;
-      const aperto = this._espansi.has("colloquio:" + chiave);
-      const modo = c.modalita === "distanza" ? "A distanza" : c.modalita === "presenza" ? "In presenza" : "";
-      const link = /^https?:\/\//i.test(c.link || "") ? c.link : "";
-      const dettagli = [
-        c.aula ? `<div><b>Aula:</b> ${this._esc(c.aula)}</div>` : "",
-        modo ? `<div><b>Modalità:</b> ${modo}</div>` : "",
-        link
-          ? `<div><a href="${this._esc(link)}" target="_blank" rel="noopener noreferrer">Link del colloquio</a></div>`
-          : "",
-        c.note ? `<div><b>Note:</b> ${this._esc(c.note)}</div>` : "",
-      ].join("");
-      return `<div class="colloquio prenotato" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
-        <button class="riga-colloquio" data-colloquio="${this._esc(chiave)}" aria-expanded="${aperto}">${corpo}</button>
-        <div class="dettagli" ${aperto ? "" : "hidden"}>${dettagli || "<div>Nessun dettaglio.</div>"}</div>
-      </div>`;
+          <span class="stato-colloquio">Disponibile</span>`;
+      // sola lettura: il bottone apre la pagina ufficiale nel browser, nessuna scrittura
+      return `<div class="colloquio" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
+        <button class="riga-colloquio" data-apri-colloquio="${this._esc(this._linkColloqui(c.link))}">${corpo}</button></div>`;
     };
     return items.map(riga).join("");
   }

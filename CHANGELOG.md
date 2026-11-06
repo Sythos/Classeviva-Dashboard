@@ -3,6 +3,17 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- The Colloqui view does not fail when the booked talk rows have an unknown shape.
+
+### Changed
+
+- Each booked talk row shows only the status Prenotato. Open the official ClasseViva website or app to see the details.
+- The debug log shows the row count, the field names, and the field types of each talks response. It does not show values.
+
 ## 0.4.10 - 2026-10-31
 
 ### Added

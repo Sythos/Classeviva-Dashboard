@@ -57,13 +57,17 @@ test("the talks view shows both statuses in date order and hides a day outside t
     { data: giorno(28), ora_inizio: "09:00", docente: "Docente Fuori", stato: "disponibile" },
   ]);
   const html = card._vistaColloqui(ent);
-  assert.ok(html.indexOf("Docente A") < html.indexOf("Docente B"));
-  assert.doesNotMatch(html, /Docente Fuori/);
+  assert.match(html, /Docente A/);
   assert.match(html, /Disponibile/);
   assert.match(html, /Prenotato/);
-  // one button opens the details, one button opens the official page
-  assert.equal((html.match(/<button/g) || []).length, 2);
-  assert.equal((html.match(/data-colloquio=/g) || []).length, 1);
+  assert.doesNotMatch(html, /Docente B/);
+  assert.doesNotMatch(html, /Aula 5/);
+  assert.doesNotMatch(html, /Docente Fuori/);
+  assert.ok(html.indexOf("Disponibile") < html.indexOf("Prenotato"));
+  // only the free slot has a button; it opens the official page
+  assert.equal((html.match(/<button/g) || []).length, 1);
+  assert.equal((html.match(/data-colloquio=/g) || []).length, 0);
+  assert.equal((html.match(/data-apri-colloquio=/g) || []).length, 1);
 });
 
 test("the talks view shows the subject and an official link for a free slot", () => {
@@ -106,10 +110,15 @@ test("the talks view shows only safe links and escapes the text", () => {
   assert.doesNotMatch(html, /javascript:/);
   assert.doesNotMatch(html, /<a /);
   const buono = nuovaScheda([{ ...base, docente: "D", link: "https://example.org/m" }]);
-  assert.match(
-    buono.card._vistaColloqui(buono.ent),
-    /href="https:\/\/example.org\/m"[^>]*rel="noopener noreferrer"/
-  );
+  const htmlBuono = buono.card._vistaColloqui(buono.ent);
+  assert.doesNotMatch(htmlBuono, /href=/);
+  assert.doesNotMatch(htmlBuono, /example\.org/);
+  const libero = nuovaScheda([
+    { data: giorno(1), ora_inizio: "09:00", stato: "disponibile", docente: "<img src=x onerror=1>" },
+  ]);
+  const htmlLibero = libero.card._vistaColloqui(libero.ent);
+  assert.doesNotMatch(htmlLibero, /<img/);
+  assert.match(htmlLibero, /&lt;img/);
 });
 
 test("the talks view shows the empty, error and not available states", () => {
@@ -121,28 +130,24 @@ test("the talks view shows the empty, error and not available states", () => {
   assert.match(assente.card._vistaColloqui(assente.ent), /Funzione non disponibile per questo account/);
 });
 
-test("a click on a booked slot opens and closes the details without a redraw", () => {
+test("a booked talk shows only the status and no details", () => {
   const { card, ent } = nuovaScheda([
-    { data: giorno(1), ora_inizio: "09:00", docente: "D", stato: "prenotato", aula: "Aula 1" },
+    { data: giorno(1), ora_inizio: "09:00", docente: "Docente Z", stato: "prenotato", aula: "Aula 1",
+      link: "https://example.org/m", note: "Nota X" },
   ]);
-  let gestore = null;
-  const dettagli = { hidden: true };
-  const bottone = {
-    dataset: { colloquio: "k" },
-    attributi: {},
-    setAttribute(n, v) { this.attributi[n] = v; },
-    parentElement: { querySelector: () => dettagli },
-    addEventListener(_tipo, f) { gestore = f; },
-  };
-  card.shadowRoot.querySelectorAll = (sel) => (sel === "[data-colloquio]" ? [bottone] : []);
-  card._disegna(ent);
-  const prima = card.shadowRoot.innerHTML;
-  assert.ok(gestore);
-  gestore();
-  assert.equal(bottone.attributi["aria-expanded"], "true");
-  assert.equal(dettagli.hidden, false);
-  gestore();
-  assert.equal(bottone.attributi["aria-expanded"], "false");
-  assert.equal(dettagli.hidden, true);
-  assert.equal(card.shadowRoot.innerHTML, prima);
+  const html = card._vistaColloqui(ent);
+  assert.match(html, /Prenotato/);
+  assert.doesNotMatch(html, /data-colloquio=/);
+  assert.doesNotMatch(html, /Docente Z|Aula|Link del colloquio|Note:/);
+});
+
+test("a booked talk without a date stays visible after the free slots", () => {
+  const { card, ent } = nuovaScheda([
+    { stato: "prenotato", data: "", ora_inizio: "" },
+    { data: giorno(1), ora_inizio: "09:00", docente: "Docente A", stato: "disponibile" },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.match(html, /Prenotato/);
+  assert.ok(html.indexOf("Docente A") < html.indexOf("Prenotato"));
+  assert.doesNotMatch(html, /Nessun colloquio disponibile/);
 });
