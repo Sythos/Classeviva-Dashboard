@@ -68,6 +68,7 @@ mostrano le sole icone.
 - **0.4.8, compiti.** La vista Compiti mostra i compiti del portale famiglia, da oggi in poi, in ordine di scadenza. La card si aggiorna quando i compiti cambiano.
 - **0.4.9, voti, colloqui e anno.** Gli ultimi voti sono in una colonna con la materia. I colloqui liberi mostrano la materia e aprono la pagina ufficiale. Il filtro Automatico usa lo stesso anno scolastico dei dati. L'agenda segnala un errore del portale.
 - **0.4.10, lezioni.** Un nuovo sensore e un nuovo calendario mostrano le lezioni degli ultimi 7 giorni: materia, ora, docente e argomento.
+- **0.4.11, colloqui.** La vista Colloqui non dà errore se le righe dei colloqui prenotati hanno una forma sconosciuta. Ogni colloquio prenotato mostra solo lo stato **Prenotato**.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
@@ -231,7 +232,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.10
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.11
     config:
       vista: combo
       anno_scolastico: "26/27"
