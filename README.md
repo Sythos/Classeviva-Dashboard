@@ -35,7 +35,7 @@ più pagine. La card trova da sola le entità dell'integrazione: non serve indic
 | **Scrutini** | Pagelle e pagellini pubblicati, scaricabili |
 | **Compiti** | Compiti assegnati, raggruppati per giorno |
 | **Assenze e Ritardi** | Assenze, ritardi e uscite dell'anno, dalla più recente; verde se giustificate, rosso se da giustificare (in sola lettura) |
-| **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore); i colloqui prenotati si aprono per vedere aula e link |
+| **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore); i colloqui prenotati mostrano solo lo stato «Prenotato», i dettagli sono sul sito o nell'app ufficiale di ClasseViva |
 
 Il colore va in modo continuo dal rosso al verde in base al voto, con animazioni di
 ingresso e un layout che si adatta alla larghezza della card. Sotto i 460 px le schede
