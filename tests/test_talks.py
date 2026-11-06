@@ -60,28 +60,58 @@ class RangeTests(unittest.TestCase):
 
 
 class MergeTests(unittest.TestCase):
-    def test_booked_talk_marks_the_slot(self):
-        slot = {"frames": [
-            {"id": 1, "teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:00"},
-            {"id": 2, "teacherName": "Docente B", "date": "2026-10-23", "startTime": "10:00"},
-        ]}
+    SLOT = {"frames": [
+        {"id": 1, "teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:00"},
+        {"id": 2, "teacherName": "Docente B", "date": "2026-10-23", "startTime": "10:00"},
+    ]}
+
+    def test_valid_booked_row_is_status_only(self):
         prenotati = {"talks": [
             {"id": 1, "teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:00",
              "room": "Aula 3", "url": "https://example.org/m"},
         ]}
-        voci = talks.unisci(slot, prenotati)
-        self.assertEqual(len(voci), 2)
-        self.assertEqual(voci[0]["stato"], "prenotato")
-        self.assertEqual(voci[0]["aula"], "Aula 3")
-        self.assertEqual(voci[1]["stato"], "disponibile")
-        self.assertEqual(voci[1]["aula"], "")
+        voci = talks.unisci(self.SLOT, prenotati)
+        self.assertEqual(len(voci), 3)
+        self.assertEqual([v["stato"] for v in voci], ["disponibile", "disponibile", "prenotato"])
+        booked = voci[2]
+        self.assertEqual(booked["data"], "")
+        self.assertNotIn("aula", booked)
+        self.assertNotIn("link", booked)
+        self.assertNotIn("docente", booked)
 
-    def test_booked_talk_without_slot_is_added(self):
-        voci = talks.unisci({"frames": []}, {"talks": [
-            {"teacherName": "Docente C", "date": "2026-10-24T15:30:00"},
-        ]})
-        self.assertEqual(voci[0]["stato"], "prenotato")
-        self.assertEqual(voci[0]["ora_inizio"], "15:30")
+    def test_unknown_booked_row_stays_booked(self):
+        voci = talks.unisci(self.SLOT, [{"talkDate": "2026-10-24", "altro": 1}])
+        self.assertEqual(len(voci), 3)
+        self.assertEqual(voci[2]["stato"], "prenotato")
+
+    def test_mixed_booked_rows_all_count(self):
+        prenotati = [{"date": "2026-10-22"}, {"talkDate": "x"}, "testo", None, {}]
+        voci = talks.unisci(self.SLOT, prenotati)
+        self.assertEqual([v["stato"] for v in voci].count("prenotato"), 5)
+        self.assertEqual([v["stato"] for v in voci].count("disponibile"), 2)
+
+    def test_empty_booked_response_means_no_booked_rows(self):
+        for vuoto in (None, [], {}, {"talks": []}):
+            voci = talks.unisci(self.SLOT, vuoto)
+            self.assertEqual([v["stato"] for v in voci], ["disponibile", "disponibile"])
+
+    def test_malformed_slot_row_is_not_a_booked_flag(self):
+        with self.assertRaises(talks.RispostaNonRiconosciuta):
+            talks.unisci({"frames": [{"teacherName": "X"}]}, [{"a": 1}])
+
+    def test_booked_rows_without_date_are_kept_and_last(self):
+        voci = talks.unisci(self.SLOT, [{"x": 1}])
+        ordinate = talks.filtra_ordina(voci, date(2026, 10, 21))
+        self.assertEqual(len(ordinate), 3)
+        self.assertEqual(ordinate[-1]["stato"], "prenotato")
+
+    def test_describe_has_no_values(self):
+        testo = talks.descrivi([{"talkDate": "2026-10-24", "nome": "Segreto"}, {"id": 3}])
+        self.assertIn("righe=2", testo)
+        self.assertIn("talkDate:str", testo)
+        self.assertIn("id:int", testo)
+        self.assertNotIn("2026", testo)
+        self.assertNotIn("Segreto", testo)
 
     def test_missing_fields_stay_empty(self):
         voci = talks.unisci({"frames": [{"date": "2026-10-22"}]}, None)
@@ -134,16 +164,11 @@ class NestedTests(unittest.TestCase):
         self.assertEqual(voci[0]["aula"], "Aula 2")
         self.assertEqual(voci[3]["materia"], "")
 
-    def test_booking_wins_over_the_matching_slot(self):
-        prenotati = {"talks": [
-            {"teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:10", "room": "Aula 9"},
-        ]}
-        voci = talks.unisci(self.CORPO, prenotati)
-        self.assertEqual(len(voci), 4)
-        stati = [v["stato"] for v in voci]
-        self.assertEqual(stati, ["disponibile", "prenotato", "disponibile", "disponibile"])
-        self.assertEqual(voci[1]["aula"], "Aula 9")
-        self.assertEqual(voci[1]["materia"], "Materia X, Materia Y")
+    def test_booked_rows_do_not_change_the_slots(self):
+        voci = talks.unisci(self.CORPO, [{"teacherName": "Docente A", "date": "2026-10-22"}])
+        self.assertEqual(len(voci), 5)
+        self.assertEqual([v["stato"] for v in voci][:4], ["disponibile"] * 4)
+        self.assertEqual(voci[4]["stato"], "prenotato")
 
     def test_nested_items_sort_by_date_and_time(self):
         voci = talks.filtra_ordina(talks.unisci(self.CORPO, None), date(2026, 10, 21))

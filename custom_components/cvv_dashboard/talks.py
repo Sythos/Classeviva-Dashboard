@@ -235,43 +235,60 @@ def _leggi(voci: list, stato: str | None = None) -> list[dict]:
     return lette
 
 
-def unisci(corpo_slot, corpo_prenotati) -> list[dict]:
-    """Un solo elenco con gli slot liberi e quelli prenotati, senza doppioni.
+def prenotati(corpo) -> list[dict]:
+    """Un colloquio prenotato per ogni riga di `mytalks`, solo come stato.
 
-    Solleva `RispostaNonRiconosciuta` se una risposta ha dati che non si leggono.
+    Il formato delle righe non e' confermato, quindi nessun campo si legge:
+    ogni riga, anche non riconosciuta, diventa un colloquio "prenotato" senza
+    dettagli. Solleva `RispostaNonRiconosciuta` solo se la risposta non ha un
+    elenco noto.
+    """
+    return [
+        {"id": "", "data": "", "ora_inizio": "", "stato": STATO_PRENOTATO}
+        for _ in _elenco(corpo, _LISTE_PRENOTATI)
+    ]
+
+
+def descrivi(corpo) -> str:
+    """Numero di righe, nomi e tipi dei campi di una risposta. Mai i valori."""
+    if isinstance(corpo, dict):
+        righe = [r for v in corpo.values() if isinstance(v, list) for r in v]
+    elif isinstance(corpo, list):
+        righe = corpo
+    else:
+        righe = []
+    campi = {}
+    for riga in righe:
+        if isinstance(riga, dict):
+            for chiave, valore in riga.items():
+                campi.setdefault(str(chiave), type(valore).__name__)
+    elenco = ", ".join(f"{k}:{t}" for k, t in sorted(campi.items())) or "-"
+    return f"righe={len(righe)} campi={elenco}"
+
+
+def unisci(corpo_slot, corpo_prenotati) -> list[dict]:
+    """Un solo elenco con gli slot liberi e i colloqui prenotati.
+
+    Gli slot vengono da `teachersframes2` e si leggono per intero. I prenotati
+    vengono da `mytalks` e sono solo uno stato. Solleva `RispostaNonRiconosciuta`
+    se la risposta degli slot ha dati che non si leggono.
     """
     voci = _leggi(_elenco(corpo_slot, _LISTE_SLOT))
-    prenotati = _elenco(corpo_prenotati, _LISTE_PRENOTATI)
-    if isinstance(corpo_slot, dict):
-        # la risposta degli slot puo' avere anche i colloqui prenotati
-        extra = {str(k).lower(): v for k, v in corpo_slot.items()}.get("talks")
-        if isinstance(extra, list):
-            prenotati = prenotati + extra
-
-    for prenotata in _leggi(prenotati, STATO_PRENOTATO):
-        for i, voce in enumerate(voci):
-            stessa_id = prenotata["id"] and voce["id"] == prenotata["id"]
-            stesso_posto = (
-                voce["data"] == prenotata["data"]
-                and voce["ora_inizio"] == prenotata["ora_inizio"]
-                and voce["docente"] == prenotata["docente"]
-            )
-            if stessa_id or stesso_posto:
-                # il dettaglio della prenotazione vale piu' dello slot generico
-                voci[i] = {
-                    **voce,
-                    **{k: v for k, v in prenotata.items() if v},
-                    "stato": STATO_PRENOTATO,
-                }
-                break
-        else:
-            voci.append(prenotata)
-    return voci
+    return voci + prenotati(corpo_prenotati)
 
 
 def filtra_ordina(voci: list[dict], oggi: date) -> list[dict]:
-    """Tiene solo gli slot dell'intervallo e li ordina per data e ora, crescenti."""
+    """Tiene solo gli slot dell'intervallo e li ordina per data e ora, crescenti.
+    I prenotati senza data restano in fondo."""
     primo, ultimo = intervallo(oggi)
     prima, dopo = primo.isoformat(), ultimo.isoformat()
-    dentro = [v for v in voci or [] if prima <= (v.get("data") or "") <= dopo]
-    return sorted(dentro, key=lambda v: (v.get("data") or "", v.get("ora_inizio") or ""))
+    # un prenotato senza data resta sempre in elenco, in fondo
+    dentro = [
+        v for v in voci or []
+        if prima <= (v.get("data") or "") <= dopo
+        or (not v.get("data") and v.get("stato") == STATO_PRENOTATO)
+    ]
+    return sorted(
+        dentro,
+        key=lambda v: (not v.get("data"), v.get("data") or "", v.get("ora_inizio") or ""),
+    )
