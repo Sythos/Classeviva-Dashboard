@@ -35,7 +35,7 @@ più pagine. La card trova da sola le entità dell'integrazione: non serve indic
 | **Scrutini** | Pagelle e pagellini pubblicati, scaricabili |
 | **Compiti** | Compiti assegnati, raggruppati per giorno |
 | **Assenze e Ritardi** | Assenze, ritardi e uscite dell'anno, dalla più recente; verde se giustificate, rosso se da giustificare (in sola lettura) |
-| **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore); i colloqui prenotati mostrano solo lo stato «Prenotato», i dettagli sono sul sito o nell'app ufficiale di ClasseViva |
+| **Colloqui** | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo, in sola lettura (account genitore). I colloqui prenotati mostrano solo lo stato **Prenotato**, senza dettagli; per consultarli, apri il sito o l'app ufficiale ClasseViva. |
 
 Il colore va in modo continuo dal rosso al verde in base al voto, con animazioni di
 ingresso e un layout che si adatta alla larghezza della card. Sotto i 460 px le schede
@@ -63,7 +63,7 @@ mostrano le sole icone.
   di Home Assistant troppo presto o in parte.
 - **0.4.4, agenda.** L'agenda mostra gli eventi da oggi in poi, in ordine di data e di ora. Le date passate sono nascoste.
 - **0.4.5, avviso di aggiornamento.** Un "!" giallo accanto al nome dello studente indica un aggiornamento HACS di questa integrazione. Lo vede solo un amministratore.
-- **0.4.6, assenze e colloqui.** Schede in sola lettura mostrano assenze, ritardi e uscite. L'ultima scheda mostra gli orari dei colloqui di oggi e dei 27 giorni successivi. Gli appuntamenti prenotati mostrano i dettagli. La card riduce lo spazio tra le schede.
+- **0.4.6, assenze e colloqui.** Schede in sola lettura mostrano assenze, ritardi e uscite. L'ultima scheda mostra slot e colloqui prenotati per oggi e i 27 giorni successivi. I colloqui prenotati mostrano solo lo stato **Prenotato**, senza dettagli; per consultarli, apri il sito o l'app ufficiale ClasseViva. La card riduce lo spazio tra le schede.
 - **0.4.7, avviso di aggiornamento.** L'avviso apre la pagina Aggiornamenti di Home Assistant per un utente autorizzato. Home Assistant gestisce l'accesso e l'installazione. L'archivio della release contiene solo l'integrazione.
 - **0.4.8, compiti.** La vista Compiti mostra i compiti del portale famiglia, da oggi in poi, in ordine di scadenza. La card si aggiorna quando i compiti cambiano.
 - **0.4.9, voti, colloqui e anno.** Gli ultimi voti sono in una colonna con la materia. I colloqui liberi mostrano la materia e aprono la pagina ufficiale. Il filtro Automatico usa lo stesso anno scolastico dei dati. L'agenda segnala un errore del portale.

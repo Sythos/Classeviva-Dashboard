@@ -14,7 +14,7 @@ CVV Dashboard usa etichette in italiano, come nella card. I simboli restano acca
 | ★ | Scrutini | Pagelle e pagellini pubblicati. Puoi scaricarli dalla card. |
 | 📝 | Compiti | Compiti assegnati, per data. |
 | ⏱ | Assenze e Ritardi | Assenze, ritardi e uscite dell'anno, dalla più recente. Verde indica giustificata, rosso indica da giustificare. La vista è in sola lettura. |
-| ☎ | Colloqui | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo. La vista è in sola lettura e per gli account genitore. I colloqui prenotati mostrano solo lo stato «Prenotato». Apri il sito o l'app ufficiale di ClasseViva per vedere i dettagli. |
+| ☎ | Colloqui | Slot di ricevimento dei docenti per oggi e i 27 giorni dopo. La vista è in sola lettura e per gli account genitore. I colloqui prenotati mostrano solo lo stato **Prenotato**, senza dettagli. Per consultarli, apri il sito o l'app ufficiale ClasseViva. |
 
 ## Esempi
 

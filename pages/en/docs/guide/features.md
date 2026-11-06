@@ -14,7 +14,7 @@ CVV Dashboard uses Italian labels because these are the labels in the card. The 
 | ★ | Scrutini | Published report cards. Download a report card from the card. |
 | 📝 | Compiti | Homework by date. |
 | ⏱ | Assenze e Ritardi | Absences, late arrivals, and early exits of the school year, newest first. Green means justified. Red means it needs justification. The view is read-only. |
-| ☎ | Colloqui | Teacher meeting slots for today and the next 27 days. The view is read-only and is for parent accounts. A booked talk shows only the status Prenotato. Open the official ClasseViva website or app to see the details. |
+| ☎ | Colloqui | Teacher meeting slots for today and the next 27 days. The view is read-only and is for parent accounts. A booked talk shows only the **Prenotato** status, with no details. Open the official ClasseViva website or app to see booking details. |
 
 ## Examples
 
