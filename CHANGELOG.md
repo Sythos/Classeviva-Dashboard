@@ -3,6 +3,14 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- A booked talk is one complete row in the Colloqui view. The row shows the date, the booked time range, the teacher, and the subject.
+- The status Prenotato is bold green and at the far right of the row. It does not use a separate line.
+- A booked row keeps the known fields when the parser cannot read the date. The row shows the status Prenotato (dati parziali).
+
 ## 0.4.12 - 2026-11-11
 
 ### Added
