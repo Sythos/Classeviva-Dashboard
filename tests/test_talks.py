@@ -65,7 +65,7 @@ class MergeTests(unittest.TestCase):
         {"id": 2, "teacherName": "Docente B", "date": "2026-10-23", "startTime": "10:00"},
     ]}
 
-    def test_valid_booked_row_is_status_only(self):
+    def test_valid_booked_row_has_safe_details(self):
         prenotati = {"talks": [
             {"id": 1, "teacherName": "Docente A", "date": "2026-10-22", "startTime": "09:00",
              "room": "Aula 3", "url": "https://example.org/m"},
@@ -74,10 +74,9 @@ class MergeTests(unittest.TestCase):
         self.assertEqual(len(voci), 3)
         self.assertEqual([v["stato"] for v in voci], ["disponibile", "disponibile", "prenotato"])
         booked = voci[2]
-        self.assertEqual(booked["data"], "")
-        self.assertNotIn("aula", booked)
-        self.assertNotIn("link", booked)
-        self.assertNotIn("docente", booked)
+        self.assertEqual(booked["data"], "2026-10-22")
+        self.assertEqual(booked["docente"], "Docente A")
+        self.assertEqual(booked["dati"], "")
 
     def test_unknown_booked_row_stays_booked(self):
         voci = talks.unisci(self.SLOT, [{"talkDate": "2026-10-24", "altro": 1}])
@@ -178,6 +177,211 @@ class NestedTests(unittest.TestCase):
     def test_teacher_without_known_fields_raises(self):
         with self.assertRaises(talks.RispostaNonRiconosciuta):
             talks.unisci({"Teacher": [{"TeacherName": "X", "Frames": [{"Altro": 1}]}]}, None)
+
+
+def _prenotato(giorni=1, **extra):
+    riga = {
+        "talkDate": (OGGI + timedelta(days=giorni)).isoformat(), "startHour": "09:00",
+        "endHour": "09:10", "teacherId": 11, "teacherName": "Docente A", "place": "Aula 4",
+        "flagByDist": False, "talkId": 100 + giorni, "live_link": None,
+    }
+    riga.update(extra)
+    return riga
+
+
+# nested shape of teachersframes2 is not confirmed: made-up rows with the reported field names
+SLOT_ID = {"teachers": [
+    {"teacherId": 11, "teacherName": "Docente A", "subjects": ["Materia X", {"subjectDesc": "Materia Y"}],
+     "frames": []},
+    {"teacherId": 11, "teacherName": "Docente A", "subjects": ["Materia X", "Materia Z"], "frames": []},
+    {"teacherId": 12, "teacherName": "Docente B", "subjects": [], "frames": []},
+]}
+
+PRIVATI = {
+    "cellNumber": "SEGRETO-1", "emailAddr": "SEGRETO-2", "otherContact": "SEGRETO-3",
+    "bookedBy": "SEGRETO-4", "live_pw": "SEGRETO-5", "message": "SEGRETO-6",
+    "myMsg": "SEGRETO-7", "teacherMsg": "SEGRETO-8",
+}
+
+
+class BookedDetailsTests(unittest.TestCase):
+    def test_confirmed_structure_with_many_rows(self):
+        corpo = {"talks": [_prenotato(1), _prenotato(2, flagByDist=True), _prenotato(3)]}
+        voci = talks.prenotati(corpo, SLOT_ID)
+        self.assertEqual(len(voci), 3)
+        primo = voci[0]
+        self.assertEqual(primo["id"], "101")
+        self.assertEqual(primo["data"], (OGGI + timedelta(days=1)).isoformat())
+        self.assertEqual((primo["ora_inizio"], primo["ora_fine"]), ("09:00", "09:10"))
+        self.assertEqual(primo["aula"], "Aula 4")
+        self.assertEqual(primo["modalita"], "presenza")
+        self.assertEqual(voci[1]["modalita"], "distanza")
+        self.assertEqual(primo["dati"], "")
+
+    def test_date_formats(self):
+        casi = {
+            "2026-10-22": "2026-10-22", "20261022": "2026-10-22", "2026-10-22T10:30:00": "2026-10-22",
+            "22/10/2026": "2026-10-22", "22-10-2026": "2026-10-22",
+            "31/02/2026": "", "domani": "", "": "", None: "", 5: "",
+        }
+        for testo, atteso in casi.items():
+            riga = talks.prenotati([_prenotato(talkDate=testo)])[0]
+            self.assertEqual(riga["data"], atteso, testo)
+            self.assertEqual(riga["stato"], "prenotato")
+            self.assertEqual(riga["dati"], "" if atteso else "parziali")
+
+    def test_time_in_date_and_unknown_time(self):
+        riga = talks.prenotati([_prenotato(talkDate="2026-10-22T10:30:00", startHour=None)])[0]
+        self.assertEqual(riga["ora_inizio"], "10:30")
+        riga = talks.prenotati([_prenotato(startHour="mattina", endHour="boh")])[0]
+        self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), ("", ""))
+        self.assertNotEqual(riga["data"], "")
+
+    def test_malformed_row_does_not_hide_valid_rows(self):
+        corpo = {"talks": [_prenotato(1), "testo", None, 7, {"talkDate": "x"}, _prenotato(2)]}
+        voci = talks.prenotati(corpo, SLOT_ID)
+        self.assertEqual(len(voci), 6)
+        self.assertEqual([v["dati"] for v in voci], ["", "parziali", "parziali", "parziali", "parziali", ""])
+        ordinate = talks.filtra_ordina(voci, OGGI)
+        self.assertEqual(len(ordinate), 6)
+        self.assertEqual([v["data"] for v in ordinate][:2], [_voce(1)["data"], _voce(2)["data"]])
+        self.assertEqual(talks.conta_prenotati(ordinate), 2)
+
+    def test_subject_by_teacher_id(self):
+        voci = talks.prenotati([_prenotato(1), _prenotato(2, teacherId=12), _prenotato(3, teacherId=99),
+                                _prenotato(4, teacherId=None)], SLOT_ID)
+        # duplicate subjects are joined once, in the order found
+        self.assertEqual(voci[0]["materia"], "Materia X, Materia Y, Materia Z")
+        self.assertEqual(voci[1]["materia"], "")
+        self.assertEqual(voci[2]["materia"], "")
+        self.assertEqual(voci[3]["materia"], "")
+
+    def test_subject_join_without_usable_slots(self):
+        for slot in (None, [], {"Altro": 1}, "testo"):
+            self.assertEqual(talks.prenotati([_prenotato(1)], slot)[0]["materia"], "")
+
+    def test_unisci_joins_subject_from_slots(self):
+        slot = {"teachers": [{"teacherId": 11, "subjects": ["Materia X"], "frames": [
+            {"date": "2026-10-22", "startTime": "09:00"}]}]}
+        voci = talks.unisci(slot, {"talks": [_prenotato(1)]})
+        self.assertEqual(voci[-1]["materia"], "Materia X")
+
+    def test_range_and_order(self):
+        corpo = [_prenotato(28), _prenotato(-1), _prenotato(27), _prenotato(0, startHour="11:00"),
+                 _prenotato(0, startHour="08:30"), _prenotato(2)]
+        voci = talks.filtra_ordina(talks.prenotati(corpo), OGGI)
+        self.assertEqual(
+            [(v["data"], v["ora_inizio"]) for v in voci],
+            [(_voce(0)["data"], "08:30"), (_voce(0)["data"], "11:00"),
+             (_voce(2)["data"], "09:00"), (_voce(27)["data"], "09:00")],
+        )
+        self.assertEqual(talks.conta_prenotati(voci), 4)
+
+    def test_undated_rows_are_not_counted(self):
+        voci = talks.prenotati([_prenotato(1), "x"])
+        self.assertEqual(talks.conta_prenotati(talks.filtra_ordina(voci, OGGI)), 1)
+
+    def test_meeting_link_validation(self):
+        valido = "https://example.org/meet/abc"
+        casi = {
+            valido: valido, "http://example.org/m": "http://example.org/m",
+            "javascript:alert(1)": "", "ftp://example.org/m": "", "https://": "",
+            "example.org/m": "", "https://exa mple.org": "", "": "", None: "", 5: "",
+            "https://[bad": "",
+        }
+        for testo, atteso in casi.items():
+            self.assertEqual(talks.link_valido(testo), atteso, testo)
+        riga = talks.prenotati([_prenotato(1, live_link=valido)])[0]
+        self.assertEqual(riga["link"], valido)
+        self.assertTrue(riga["ha_link"])
+        for assente in (None, "", "javascript:x"):
+            riga = talks.prenotati([_prenotato(1, live_link=assente)])[0]
+            self.assertEqual(riga["link"], "")
+            self.assertFalse(riga["ha_link"])
+
+    def test_link_lookup_by_id(self):
+        voci = talks.prenotati([_prenotato(1, live_link="https://example.org/a"), _prenotato(2)])
+        self.assertEqual(talks.link_prenotato(voci, 101), "https://example.org/a")
+        self.assertEqual(talks.link_prenotato(voci, "101"), "https://example.org/a")
+        self.assertEqual(talks.link_prenotato(voci, 102), "")
+        self.assertEqual(talks.link_prenotato(voci, 999), "")
+        self.assertEqual(talks.link_prenotato(voci, ""), "")
+        self.assertEqual(talks.link_prenotato(None, 101), "")
+
+    def test_private_fields_never_reach_the_rows(self):
+        voci = talks.prenotati([_prenotato(1, **PRIVATI)], SLOT_ID)
+        self.assertEqual(set(voci[0]), {
+            "id", "docente_id", "data", "ora_inizio", "ora_fine", "docente", "materia",
+            "stato", "modalita", "aula", "link", "ha_link", "dati",
+        })
+        self.assertNotIn("SEGRETO", repr(voci))
+        # the free slot rows must not read a message field either
+        slot = {"frames": [{"date": "2026-10-22", "startTime": "09:00", **PRIVATI}]}
+        self.assertNotIn("SEGRETO", repr(talks.unisci(slot, None)))
+        # the log helper shows names and types only
+        self.assertNotIn("SEGRETO", talks.descrivi([_prenotato(1, **PRIVATI)]))
+
+    def test_empty_responses(self):
+        for vuoto in (None, [], {}, {"talks": []}):
+            self.assertEqual(talks.prenotati(vuoto, SLOT_ID), [])
+
+    def test_unknown_top_level_raises(self):
+        with self.assertRaises(talks.RispostaNonRiconosciuta):
+            talks.prenotati({"altro": [1]})
+
+
+_BASE = pathlib.Path(__file__).resolve().parent.parent / "custom_components" / "cvv_dashboard"
+
+
+class SourceBoundaryTests(unittest.TestCase):
+    """Checks on the source text: HA cannot be imported in these tests."""
+
+    def _funzione(self, nome_file, inizio, fine):
+        testo = (_BASE / nome_file).read_text(encoding="utf-8")
+        return testo[testo.index(inizio):testo.index(fine, testo.index(inizio))]
+
+    def test_talks_requests_use_only_get(self):
+        corpo = self._funzione("api.py", "async def async_fetch_colloqui", "async def leggi_comunicazione")
+        self.assertEqual(corpo.count("self._get("), 2)
+        for vietato in ("_post", "_put", "_delete", "_patch", "POST", "DELETE"):
+            self.assertNotIn(vietato, corpo)
+
+    def test_no_write_command_in_the_card_or_the_websocket(self):
+        scheda = (_BASE / "www" / "cvv-dashboard-card.js").read_text(encoding="utf-8")
+        vista = scheda[scheda.index("_vistaColloqui(ent)"):scheda.index("_vistaAgenda(")]
+        for vietato in ("method:", "fetch(", "prenota", "annulla", "elimina", "invia", "stampa"):
+            self.assertNotIn(vietato, vista.lower() if vietato.islower() else vista)
+        init = (_BASE / "__init__.py").read_text(encoding="utf-8")
+        ws = init[init.index("async def _ws_link_colloquio"):init.index("async def _coordinatore_anno")]
+        self.assertIn('vol.Optional("anno")', init)
+        self.assertIn('"_anni"', ws)
+        self.assertNotIn("_coordinatore_anno(", ws)
+        self.assertNotIn("async_refresh", ws)
+        self.assertNotIn("coordinator.api", ws)
+        self.assertNotIn("async_fetch", ws)
+
+    def test_sensor_removes_the_booked_link_from_every_attribute_path(self):
+        sensore = (_BASE / "sensor.py").read_text(encoding="utf-8")
+        classe = sensore[sensore.index("class TalksSensor"):sensore.index("class AbsencesSensor")]
+        # the removal of the booked link does not depend on the `completo` flag
+        prima = classe.index('if k != "link"')
+        self.assertLess(prima, classe.index("if not completo:"))
+        self.assertIn("conta_prenotati", classe)
+
+    def test_logs_never_print_row_values(self):
+        for nome in ("api.py", "talks.py", "coordinator.py"):
+            testo = (_BASE / nome).read_text(encoding="utf-8")
+            for riga in testo.splitlines():
+                if "_LOGGER" in riga and ("colloqui" in riga.lower()):
+                    for campo in ("live_link", "live_pw", "message", "cellNumber", "emailAddr"):
+                        self.assertNotIn(campo, riga)
+
+
+class RetentionTests(unittest.TestCase):
+    def test_coordinator_keeps_last_list_after_a_failure(self):
+        testo = (_BASE / "coordinator.py").read_text(encoding="utf-8")
+        self.assertIn('data.get("colloqui_stato") not in ("errore", "errore_dati")', testo)
+        self.assertIn('data[chiave] = vecchi[chiave]', testo)
 
 
 if __name__ == "__main__":

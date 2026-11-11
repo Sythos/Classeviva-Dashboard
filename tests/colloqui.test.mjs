@@ -35,6 +35,7 @@ function nuovaScheda(items, stato = "ok") {
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     document: { createElement: () => new Elemento() },
     console: { info() {}, error() {}, warn() {}, log() {} },
+    URL,
   };
   vm.createContext(contesto);
   vm.runInContext(`(function () {\n${CODICE}\n})();`, contesto, { filename: FILE });
@@ -60,13 +61,13 @@ test("the talks view shows both statuses in date order and hides a day outside t
   assert.match(html, /Docente A/);
   assert.match(html, /Disponibile/);
   assert.match(html, /Prenotato/);
-  assert.doesNotMatch(html, /Docente B/);
-  assert.doesNotMatch(html, /Aula 5/);
+  assert.match(html, /Docente B/);
+  assert.match(html, /Aula 5/);
   assert.doesNotMatch(html, /Docente Fuori/);
   assert.ok(html.indexOf("Disponibile") < html.indexOf("Prenotato"));
-  // only the free slot has a button; it opens the official page
-  assert.equal((html.match(/<button/g) || []).length, 1);
-  assert.equal((html.match(/data-colloquio=/g) || []).length, 0);
+  // the free slot opens the official page; the booked row opens its details
+  assert.equal((html.match(/<button/g) || []).length, 2);
+  assert.equal((html.match(/data-colloquio=/g) || []).length, 1);
   assert.equal((html.match(/data-apri-colloquio=/g) || []).length, 1);
 });
 
@@ -109,10 +110,18 @@ test("the talks view shows only safe links and escapes the text", () => {
   assert.doesNotMatch(html, /<b>A<\/b>/);
   assert.doesNotMatch(html, /javascript:/);
   assert.doesNotMatch(html, /<a /);
-  const buono = nuovaScheda([{ ...base, docente: "D", link: "https://example.org/m" }]);
+  // a booked link is never written in the HTML; the card asks the server for it
+  const buono = nuovaScheda([{ ...base, id: "7", docente: "D", ha_link: true, link: "https://example.org/m" }]);
   const htmlBuono = buono.card._vistaColloqui(buono.ent);
   assert.doesNotMatch(htmlBuono, /href=/);
   assert.doesNotMatch(htmlBuono, /example\.org/);
+  assert.match(htmlBuono, /data-talk="7"/);
+  assert.equal(buono.card._linkRiunione("https://example.org/m"), "https://example.org/m");
+  assert.equal(buono.card._linkRiunione("http://example.org/m"), "http://example.org/m");
+  assert.equal(buono.card._linkRiunione("javascript:alert(1)"), "");
+  assert.equal(buono.card._linkRiunione("ftp://example.org/m"), "");
+  assert.equal(buono.card._linkRiunione("https://exa mple.org"), "");
+  assert.equal(buono.card._linkRiunione(""), "");
   const libero = nuovaScheda([
     { data: giorno(1), ora_inizio: "09:00", stato: "disponibile", docente: "<img src=x onerror=1>" },
   ]);
@@ -130,15 +139,86 @@ test("the talks view shows the empty, error and not available states", () => {
   assert.match(assente.card._vistaColloqui(assente.ent), /Funzione non disponibile per questo account/);
 });
 
-test("a booked talk shows only the status and no details", () => {
+test("a booked talk shows its status and, in the details, the safe fields", () => {
   const { card, ent } = nuovaScheda([
-    { data: giorno(1), ora_inizio: "09:00", docente: "Docente Z", stato: "prenotato", aula: "Aula 1",
-      link: "https://example.org/m", note: "Nota X" },
+    { id: "5", data: giorno(1), ora_inizio: "09:00", ora_fine: "09:10", docente: "Docente Z",
+      materia: "Materia X, Materia Y", stato: "prenotato", aula: "Aula 1", modalita: "distanza",
+      ha_link: false, dati: "" },
   ]);
   const html = card._vistaColloqui(ent);
   assert.match(html, /Prenotato/);
-  assert.doesNotMatch(html, /data-colloquio=/);
-  assert.doesNotMatch(html, /Docente Z|Aula|Link del colloquio|Note:/);
+  assert.match(html, /data-colloquio="5"/);
+  assert.match(html, /Docente Z/);
+  assert.match(html, /Materia X, Materia Y/);
+  assert.match(html, /09:00–09:10/);
+  assert.match(html, /Aula 1/);
+  assert.match(html, /a distanza/);
+  assert.doesNotMatch(html, /link-riunione/);
+  assert.match(html, /<div class="dettagli" hidden>/);
+});
+
+test("a partial booked talk shows a clear status and does not hide the other rows", () => {
+  const { card, ent } = nuovaScheda([
+    { id: "", data: "", ora_inizio: "", stato: "prenotato", dati: "parziali" },
+    { id: "6", data: giorno(2), ora_inizio: "10:00", docente: "Docente V", stato: "prenotato", dati: "" },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.match(html, /Prenotato \(dati parziali\)/);
+  assert.match(html, /Docente V/);
+  assert.ok(html.indexOf("Docente V") < html.indexOf("dati parziali"));
+});
+
+test("the card asks for the meeting link only when the row opens and sends no write command", async () => {
+  const { card, ent } = nuovaScheda([]);
+  const chiamate = [];
+  card._hass = {
+    callWS: (msg) => {
+      chiamate.push(msg);
+      return Promise.resolve({ link: "https://example.org/m" });
+    },
+  };
+  card._entitaCard = "sensor.voti_test";
+  const figli = [];
+  const box = { dataset: { talk: "9" }, appendChild: (a) => figli.push(a) };
+  card._caricaLinkColloquio(box, ent);
+  card._caricaLinkColloquio(box, ent);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(chiamate.length, 1);
+  assert.deepEqual(
+    { ...chiamate[0] },
+    { type: "cvv_dashboard/talk_link", entity_id: "sensor.voti_test", talk_id: "9" }
+  );
+  assert.equal(figli.length, 1);
+  assert.equal(figli[0].href, "https://example.org/m");
+  assert.equal(figli[0].rel, "noopener noreferrer");
+  assert.doesNotMatch(CODICE, /cvv_dashboard\/(book|cancel|delete|edit|message)/);
+});
+
+test("the link request carries the displayed year only when it is not the configured one", async () => {
+  const { card, ent } = nuovaScheda([]);
+  const chiamate = [];
+  card._hass = { callWS: (msg) => { chiamate.push(msg); return Promise.resolve({ link: "" }); } };
+  card._entitaCard = "sensor.voti_test";
+  card._annoLink = 2026;
+  card._caricaLinkColloquio({ dataset: { talk: "1" }, appendChild() {} }, ent);
+  card._annoLink = null;
+  card._caricaLinkColloquio({ dataset: { talk: "2" }, appendChild() {} }, ent);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(chiamate[0].anno, 2026);
+  assert.equal("anno" in chiamate[1], false);
+});
+
+test("a redraw asks again for the link of the rows that are already open", () => {
+  const { card, ent } = nuovaScheda([]);
+  let selettore = "";
+  card.shadowRoot = {
+    querySelectorAll: (s) => { selettore = s; return [{ dataset: { talk: "3" } }]; },
+  };
+  const chiamati = [];
+  card._caricaLinkColloquio = (box) => chiamati.push(box.dataset.talk);
+  card._caricaLinkAperti(ent);
+  assert.match(selettore, /\.dettagli:not\(\[hidden\]\) \.link-riunione/);
+  assert.deepEqual(chiamati, ["3"]);
 });
 
 test("a booked talk without a date stays visible after the free slots", () => {

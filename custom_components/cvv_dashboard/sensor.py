@@ -48,7 +48,7 @@ from .coordinator import CvvDashboardCoordinator
 from .download import DOWNLOAD_URL
 from .homeworks import normalizza as normalizza_compiti, per_card as compiti_per_card
 from .lessons import ordina as ordina_lezioni
-from .talks import STATO_PRENOTATO, filtra_ordina, intervallo
+from .talks import STATO_PRENOTATO, conta_prenotati, filtra_ordina, intervallo
 from .web import (
     CATEGORIA_ANNOTAZIONE,
     CATEGORIA_DISCIPLINARE,
@@ -641,7 +641,7 @@ class TalksSensor(_Base):
 
     @property
     def native_value(self):
-        return sum(1 for v in self._voci() if v.get("stato") == STATO_PRENOTATO)
+        return conta_prenotati(self._voci())
 
     @property
     def extra_state_attributes(self):
@@ -650,16 +650,24 @@ class TalksSensor(_Base):
     def _attributes(self, limit: int | None = TALKS_LIMIT, completo: bool = False) -> dict:
         voci = self._voci()
         primo, ultimo = intervallo(dt_util.now().date())
-        prenotati = sum(1 for v in voci if v.get("stato") == STATO_PRENOTATO)
+        prenotati = conta_prenotati(voci)
+        disponibili = sum(1 for v in voci if v.get("stato") != STATO_PRENOTATO)
         if limit is not None:
             voci = voci[:limit]
+        # il link di un colloquio prenotato non esce mai da qui: la card lo chiede
+        # al comando websocket `talk_link` solo quando l'utente apre la riga
+        voci = [
+            {k: v for k, v in x.items() if k != "link"}
+            if x.get("stato") == STATO_PRENOTATO else x
+            for x in voci
+        ]
         if not completo:
             # note e link restano fuori dagli attributi, che vanno nel Recorder
             voci = [{k: v for k, v in x.items() if k not in ("note", "link")} for x in voci]
         return {
             "stato_dati": self._data.get("colloqui_stato"),
             "prenotati": prenotati,
-            "disponibili": len(self._voci()) - prenotati,
+            "disponibili": disponibili,
             "dal": primo.isoformat(),
             "al": ultimo.isoformat(),
             "items": voci,
