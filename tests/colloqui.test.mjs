@@ -194,6 +194,33 @@ test("the card asks for the meeting link only when the row opens and sends no wr
   assert.doesNotMatch(CODICE, /cvv_dashboard\/(book|cancel|delete|edit|message)/);
 });
 
+test("the link request carries the displayed year only when it is not the configured one", async () => {
+  const { card, ent } = nuovaScheda([]);
+  const chiamate = [];
+  card._hass = { callWS: (msg) => { chiamate.push(msg); return Promise.resolve({ link: "" }); } };
+  card._entitaCard = "sensor.voti_test";
+  card._annoLink = 2026;
+  card._caricaLinkColloquio({ dataset: { talk: "1" }, appendChild() {} }, ent);
+  card._annoLink = null;
+  card._caricaLinkColloquio({ dataset: { talk: "2" }, appendChild() {} }, ent);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(chiamate[0].anno, 2026);
+  assert.equal("anno" in chiamate[1], false);
+});
+
+test("a redraw asks again for the link of the rows that are already open", () => {
+  const { card, ent } = nuovaScheda([]);
+  let selettore = "";
+  card.shadowRoot = {
+    querySelectorAll: (s) => { selettore = s; return [{ dataset: { talk: "3" } }]; },
+  };
+  const chiamati = [];
+  card._caricaLinkColloquio = (box) => chiamati.push(box.dataset.talk);
+  card._caricaLinkAperti(ent);
+  assert.match(selettore, /\.dettagli:not\(\[hidden\]\) \.link-riunione/);
+  assert.deepEqual(chiamati, ["3"]);
+});
+
 test("a booked talk without a date stays visible after the free slots", () => {
   const { card, ent } = nuovaScheda([
     { stato: "prenotato", data: "", ora_inizio: "" },

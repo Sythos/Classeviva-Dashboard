@@ -582,6 +582,7 @@ class CvvDashboardCard extends HTMLElement {
     avvisoHacs.aggiorna(hass);
     const scelto = this._selezionaAnno();
     if (!scelto) {
+      this._annoLink = null;
       if (!this._config.anno_scolastico) {
         const ent = this._entita();
         const impronta = JSON.stringify(
@@ -609,6 +610,8 @@ class CvvDashboardCard extends HTMLElement {
     }
 
     this._entitaCard = scelto.entity.entity_id;
+    // year of the displayed data, sent with the link request when it is not the configured one
+    this._annoLink = scelto.remoto ? scelto.anno : null;
     const impronta = `${scelto.entity.entity_id}:${scelto.anno}:${scelto.remoto ? "r" : "i"}:${this._improntaStati(scelto.entity)}`;
     if (impronta === this._impronta || impronta === this._richiesta) return;
     this._impronta = impronta;
@@ -934,6 +937,7 @@ class CvvDashboardCard extends HTMLElement {
         if (link) this._caricaLinkColloquio(link, ent);
       })
     );
+    this._caricaLinkAperti(ent);
     this.shadowRoot.querySelectorAll("[data-apri-colloquio]").forEach((b) =>
       b.addEventListener("click", () => {
         // il link è già verificato da _linkColloqui; si apre una pagina, non si invia nulla
@@ -1502,6 +1506,13 @@ class CvvDashboardCard extends HTMLElement {
     }
   }
 
+  /** Dopo un nuovo disegno le righe già aperte hanno un contenitore vuoto: chiede di nuovo il link. */
+  _caricaLinkAperti(ent) {
+    this.shadowRoot
+      .querySelectorAll(".dettagli:not([hidden]) .link-riunione")
+      .forEach((box) => this._caricaLinkColloquio(box, ent));
+  }
+
   /** Chiede al server il link di un colloquio prenotato, solo quando la riga si apre. */
   _caricaLinkColloquio(box, ent) {
     const id = box.dataset.talk;
@@ -1511,7 +1522,12 @@ class CvvDashboardCard extends HTMLElement {
     let chiamata;
     try {
       chiamata = Promise.resolve(
-        this._hass.callWS({ type: "cvv_dashboard/talk_link", entity_id: entita, talk_id: String(id) })
+        this._hass.callWS({
+          type: "cvv_dashboard/talk_link",
+          entity_id: entita,
+          talk_id: String(id),
+          ...(this._annoLink !== null && this._annoLink !== undefined ? { anno: this._annoLink } : {}),
+        })
       );
     } catch (err) {
       chiamata = Promise.reject(err);

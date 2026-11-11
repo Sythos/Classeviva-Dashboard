@@ -353,6 +353,10 @@ class SourceBoundaryTests(unittest.TestCase):
             self.assertNotIn(vietato, vista.lower() if vietato.islower() else vista)
         init = (_BASE / "__init__.py").read_text(encoding="utf-8")
         ws = init[init.index("async def _ws_link_colloquio"):init.index("async def _coordinatore_anno")]
+        self.assertIn('vol.Optional("anno")', init)
+        self.assertIn('"_anni"', ws)
+        self.assertNotIn("_coordinatore_anno(", ws)
+        self.assertNotIn("async_refresh", ws)
         self.assertNotIn("coordinator.api", ws)
         self.assertNotIn("async_fetch", ws)
 

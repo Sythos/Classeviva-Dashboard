@@ -297,6 +297,7 @@ async def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
         vol.Required("type"): WS_TALK_LINK,
         vol.Required("entity_id"): cv.entity_id,
         vol.Required("talk_id"): vol.All(str, vol.Length(min=1, max=40)),
+        vol.Optional("anno"): vol.All(int, vol.Range(min=2000, max=2099)),
     }
 )
 @websocket_api.async_response
@@ -335,9 +336,19 @@ async def _ws_link_colloquio(hass: HomeAssistant, connection, msg: dict) -> None
     if coordinator is None or coordinator.data is None:
         connection.send_error(msg["id"], "entry_not_loaded", "Dati ClasseViva non disponibili.")
         return
+    dati = coordinator.data
+    anno = msg.get("anno")
+    if anno is not None and anno != anno_effettivo(coordinator):
+        # the card shows another year: read only the cache of that year, never refresh
+        voce = hass.data[DOMAIN].get("_anni", {}).get(f"{entity.config_entry_id}:{anno}")
+        coordinatore_anno = voce.get("coord") if voce else None
+        dati = coordinatore_anno.data if coordinatore_anno is not None else None
+    if not dati:
+        connection.send_result(msg["id"], {"link": ""})
+        return
     connection.send_result(
         msg["id"],
-        {"link": link_prenotato(coordinator.data.get("colloqui") or [], msg["talk_id"])},
+        {"link": link_prenotato(dati.get("colloqui") or [], msg["talk_id"])},
     )
 
 
