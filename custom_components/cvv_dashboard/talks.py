@@ -296,8 +296,6 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
         return riga
     try:
         iso, ora_data = _data_ora(_prima(voce, _CHIAVI_DATA))
-        if not iso:
-            return riga
         modo = _prima(voce, _CHIAVI_MODO)
         if modo is True or str(modo).lower() in ("remote", "remoto", "distance", "a distanza"):
             modo_testo = "distanza"
@@ -307,19 +305,23 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
             modo_testo = ""
         docente_id = _testo(_prima(voce, _CHIAVI_DOCENTE_ID))
         link = link_valido(_prima(voce, _CHIAVI_LINK))
+        inizio = _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data
+        docente = _testo(_prima(voce, _CHIAVI_DOCENTE))
+        materia = materie.get(docente_id, "")
+        # known fields stay even when the date is not recognized
         riga.update({
             "id": _testo(_prima(voce, _CHIAVI_ID)),
             "docente_id": docente_id,
             "data": iso,
-            "ora_inizio": _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data,
+            "ora_inizio": inizio,
             "ora_fine": _ora(_prima(voce, _CHIAVI_FINE)),
-            "docente": _testo(_prima(voce, _CHIAVI_DOCENTE)),
-            "materia": materie.get(docente_id, ""),
+            "docente": docente,
+            "materia": materia,
             "modalita": modo_testo,
             "aula": _testo(_prima(voce, _CHIAVI_AULA)),
             "link": link,
             "ha_link": bool(link),
-            "dati": "",
+            "dati": "" if (iso and inizio and docente) else "parziali",
         })
     except Exception:  # noqa: BLE001 - una riga strana non deve far fallire l'elenco
         return {**riga, "data": "", "ora_inizio": "", "dati": "parziali"}
