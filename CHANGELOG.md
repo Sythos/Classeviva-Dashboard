@@ -3,6 +3,19 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Added
+
+- A booked talk row in the Colloqui view opens its details. The details show the teacher, the subject, the date, the time range, the place, and the mode.
+- The card shows the meeting link of a booked talk only when the user opens the row. The card gets the link from a new authenticated command. The link is not in the entity attributes and not in the Recorder.
+
+### Changed
+
+- The booked count includes only talks with a valid date in the next 28 days.
+- A booked row with data that the parser cannot read shows the status Prenotato (dati parziali). Other rows stay visible.
+- The integration does not read the field `message` of a free slot.
+
 ## 0.4.11 - 2026-11-06
 
 ### Fixed
