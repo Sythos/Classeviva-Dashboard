@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
+from urllib.parse import urlsplit
 
 # oggi piu' 27 giorni: 28 giorni di calendario in tutto
 GIORNI_AVANTI = 27
@@ -51,19 +52,24 @@ class RispostaNonRiconosciuta(ValueError):
 
 
 # Nomi candidati dei campi (non confermati)
-_CHIAVI_DATA = ("data", "date", "day", "start", "begin", "dateTime", "datetime", "frameDate")
+_CHIAVI_DATA = (
+    "data", "date", "day", "start", "begin", "dateTime", "datetime", "frameDate", "talkDate",
+)
 _CHIAVI_INIZIO = (
     "ora_inizio", "startTime", "timeStart", "from", "start", "begin", "hourStart",
-    "frameTimeFrom", "timeFrom",
+    "frameTimeFrom", "timeFrom", "startHour",
 )
-_CHIAVI_FINE = ("ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd", "frameTimeTo", "timeTo")
+_CHIAVI_FINE = (
+    "ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd", "frameTimeTo", "timeTo", "endHour",
+)
 _CHIAVI_DOCENTE = ("docente", "teacherName", "teacher", "teacherDesc", "name")
 _CHIAVI_MATERIA = ("materia", "subjects", "subject", "subjectDesc")
 _CHIAVI_AULA = ("aula", "room", "place", "location", "framePlace")
 _CHIAVI_ORARI_LIBERI = ("freeSlotTimeRange", "freeSlots")
-_CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl")
-_CHIAVI_NOTE = ("note", "notes", "description", "desc", "message")
-_CHIAVI_MODO = ("modalita", "mode", "type", "talkType", "remote")
+_CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl", "live_link")
+# "message" non si legge mai: puo' contenere testo privato
+_CHIAVI_NOTE = ("note", "notes", "description", "desc")
+_CHIAVI_MODO = ("modalita", "mode", "type", "talkType", "remote", "flagByDist")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
 _CHIAVI_DOCENTE_ID = ("teacherId", "docente_id", "idTeacher")
 _CHIAVI_PRENOTATO = ("prenotato", "booked", "isBooked", "reserved", "taken")
@@ -99,6 +105,14 @@ def _testo(valore) -> str:
 def _data_ora(valore) -> tuple[str, str]:
     """Da un testo data/ora ricava (AAAA-MM-GG, HH:MM); vuoto se non riconosce."""
     testo = _testo(valore)
+    g = re.match(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:[T ](\d{1,2}):(\d{2}))?", testo)
+    if g:
+        try:
+            iso = date(int(g.group(3)), int(g.group(2)), int(g.group(1))).isoformat()
+        except ValueError:
+            return "", ""
+        ora = f"{int(g.group(4)):02d}:{g.group(5)}" if g.group(4) else ""
+        return iso, ora
     m = re.match(r"^(\d{4})-?(\d{2})-?(\d{2})(?:[T ](\d{2}):(\d{2}))?", testo)
     if m:
         try:
@@ -235,18 +249,92 @@ def _leggi(voci: list, stato: str | None = None) -> list[dict]:
     return lette
 
 
-def prenotati(corpo) -> list[dict]:
-    """Un colloquio prenotato per ogni riga di `mytalks`, solo come stato.
+def link_valido(valore) -> str:
+    """Il link se e' un indirizzo http o https con un nome host, altrimenti vuoto."""
+    testo = _testo(valore)
+    if not testo or re.search(r"\s", testo):
+        return ""
+    try:
+        url = urlsplit(testo)
+        host = url.hostname
+    except ValueError:
+        return ""
+    return testo if url.scheme.lower() in ("http", "https") and host else ""
 
-    Il formato delle righe non e' confermato, quindi nessun campo si legge:
-    ogni riga, anche non riconosciuta, diventa un colloquio "prenotato" senza
-    dettagli. Solleva `RispostaNonRiconosciuta` solo se la risposta non ha un
-    elenco noto.
+
+def _materie_per_docente(corpo_slot) -> dict[str, str]:
+    """Materie di ogni docente di `teachersframes2`, unite per `teacherId`."""
+    try:
+        righe = _elenco(corpo_slot, _LISTE_SLOT)
+    except RispostaNonRiconosciuta:
+        return {}
+    nomi: dict[str, list[str]] = {}
+    for riga in righe:
+        if not isinstance(riga, dict):
+            continue
+        chiave = _testo(_prima(riga, _CHIAVI_DOCENTE_ID))
+        if not chiave:
+            continue
+        for nome in _materia(_prima(riga, _CHIAVI_MATERIA)).split(", "):
+            if nome and nome not in nomi.setdefault(chiave, []):
+                nomi[chiave].append(nome)
+    return {k: ", ".join(v) for k, v in nomi.items()}
+
+
+def _prenotato(voce, materie: dict[str, str]) -> dict:
+    """Un colloquio prenotato. Si copiano solo i campi sicuri noti.
+
+    Campi personali o di testo (contatti, messaggi, password) non si leggono mai.
+    Senza una data riconosciuta la riga resta "prenotato" con `dati` "parziali".
     """
-    return [
-        {"id": "", "data": "", "ora_inizio": "", "stato": STATO_PRENOTATO}
-        for _ in _elenco(corpo, _LISTE_PRENOTATI)
-    ]
+    riga = {
+        "id": "", "docente_id": "", "data": "", "ora_inizio": "", "ora_fine": "",
+        "docente": "", "materia": "", "stato": STATO_PRENOTATO, "modalita": "",
+        "aula": "", "link": "", "ha_link": False, "dati": "parziali",
+    }
+    if not isinstance(voce, dict):
+        return riga
+    try:
+        iso, ora_data = _data_ora(_prima(voce, _CHIAVI_DATA))
+        if not iso:
+            return riga
+        modo = _prima(voce, _CHIAVI_MODO)
+        if modo is True or str(modo).lower() in ("remote", "remoto", "distance", "a distanza"):
+            modo_testo = "distanza"
+        elif modo is False or str(modo).lower() in ("presence", "presenza", "in presenza", "local"):
+            modo_testo = "presenza"
+        else:
+            modo_testo = ""
+        docente_id = _testo(_prima(voce, _CHIAVI_DOCENTE_ID))
+        link = link_valido(_prima(voce, _CHIAVI_LINK))
+        riga.update({
+            "id": _testo(_prima(voce, _CHIAVI_ID)),
+            "docente_id": docente_id,
+            "data": iso,
+            "ora_inizio": _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data,
+            "ora_fine": _ora(_prima(voce, _CHIAVI_FINE)),
+            "docente": _testo(_prima(voce, _CHIAVI_DOCENTE)),
+            "materia": materie.get(docente_id, ""),
+            "modalita": modo_testo,
+            "aula": _testo(_prima(voce, _CHIAVI_AULA)),
+            "link": link,
+            "ha_link": bool(link),
+            "dati": "",
+        })
+    except Exception:  # noqa: BLE001 - una riga strana non deve far fallire l'elenco
+        return {**riga, "data": "", "ora_inizio": "", "dati": "parziali"}
+    return riga
+
+
+def prenotati(corpo, corpo_slot=None) -> list[dict]:
+    """Un colloquio prenotato per ogni riga di `mytalks`.
+
+    Ogni riga, anche non riconosciuta, diventa un colloquio "prenotato". Le
+    materie vengono da `teachersframes2`, unite per `teacherId`. Solleva
+    `RispostaNonRiconosciuta` solo se la risposta non ha un elenco noto.
+    """
+    materie = _materie_per_docente(corpo_slot)
+    return [_prenotato(voce, materie) for voce in _elenco(corpo, _LISTE_PRENOTATI)]
 
 
 def descrivi(corpo) -> str:
@@ -274,7 +362,23 @@ def unisci(corpo_slot, corpo_prenotati) -> list[dict]:
     se la risposta degli slot ha dati che non si leggono.
     """
     voci = _leggi(_elenco(corpo_slot, _LISTE_SLOT))
-    return voci + prenotati(corpo_prenotati)
+    return voci + prenotati(corpo_prenotati, corpo_slot)
+
+
+def link_prenotato(voci: list[dict], id_colloquio) -> str:
+    """Link di riunione di un colloquio prenotato, per id; vuoto se manca o non e' valido."""
+    chiave = _testo(id_colloquio)
+    if not chiave:
+        return ""
+    for v in voci or []:
+        if v.get("stato") == STATO_PRENOTATO and v.get("id") == chiave:
+            return link_valido(v.get("link"))
+    return ""
+
+
+def conta_prenotati(voci: list[dict]) -> int:
+    """Colloqui prenotati con una data valida. Le righe senza data non si contano."""
+    return sum(1 for v in voci if v.get("stato") == STATO_PRENOTATO and v.get("data"))
 
 
 def filtra_ordina(voci: list[dict], oggi: date) -> list[dict]:

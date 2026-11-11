@@ -54,6 +54,7 @@ from .const import (
 from .coordinator import CvvDashboardCoordinator
 from .download import CvvDashboardDownloadView
 from .sensor import anno_effettivo, card_data
+from .talks import link_prenotato
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,6 +79,7 @@ SCHEMA_LEGGI = vol.Schema(
 )
 SCHEMA_ISTANZA = vol.Schema({vol.Optional("entry_id"): cv.string})
 WS_CARD_DATA = f"{DOMAIN}/card_data"
+WS_TALK_LINK = f"{DOMAIN}/talk_link"
 CARD_SENSOR_KEYS = ("media", "grades", "noticeboard", "notes", "scrutini", "agenda", "talks", "absences")
 
 # Anni scelti al volo nella card: i dati restano in cache quanto un aggiornamento
@@ -290,6 +292,55 @@ async def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
     connection.send_result(msg["id"], card_data(coordinatore_anno, chiave))
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TALK_LINK,
+        vol.Required("entity_id"): cv.entity_id,
+        vol.Required("talk_id"): vol.All(str, vol.Length(min=1, max=40)),
+    }
+)
+@websocket_api.async_response
+async def _ws_link_colloquio(hass: HomeAssistant, connection, msg: dict) -> None:
+    """Return the meeting link of one booked talk, only when the card asks for it.
+
+    Read-only: it reads the data in memory and sends no request to ClasseViva.
+    The link is never stored in a state attribute, so the Recorder never gets it.
+    """
+    registry = er.async_get(hass)
+    entity = registry.async_get(msg["entity_id"])
+    if (
+        entity is None
+        or entity.platform != DOMAIN
+        or entity.config_entry_id is None
+        or not entity.unique_id.startswith(("cvv_grades_", "cvv_talks_"))
+    ):
+        connection.send_error(msg["id"], "entity_not_found", "Entita ClasseViva non trovata.")
+        return
+    student_id = entity.unique_id.split("_", 2)[2]
+    talks_id = registry.async_get_entity_id("sensor", DOMAIN, f"cvv_talks_{student_id}")
+    talks = registry.async_get(talks_id) if talks_id else None
+    if talks is None or talks.config_entry_id != entity.config_entry_id:
+        connection.send_error(msg["id"], "entity_not_found", "Entita ClasseViva non trovata.")
+        return
+    if (
+        not connection.user.is_admin
+        and not connection.user.permissions.check_entity(talks.entity_id, POLICY_READ)
+    ):
+        raise Unauthorized(
+            user_id=connection.user.id,
+            entity_id=talks.entity_id,
+            permission=POLICY_READ,
+        )
+    coordinator = _coordinatori(hass).get(entity.config_entry_id)
+    if coordinator is None or coordinator.data is None:
+        connection.send_error(msg["id"], "entry_not_loaded", "Dati ClasseViva non disponibili.")
+        return
+    connection.send_result(
+        msg["id"],
+        {"link": link_prenotato(coordinator.data.get("colloqui") or [], msg["talk_id"])},
+    )
+
+
 async def _coordinatore_anno(
     hass: HomeAssistant,
     entry_id: str,
@@ -347,6 +398,7 @@ def _registra_websocket(hass: HomeAssistant) -> None:
     if hass.data[DOMAIN].get("_websocket_registered"):
         return
     websocket_api.async_register_command(hass, _ws_dati_card)
+    websocket_api.async_register_command(hass, _ws_link_colloquio)
     hass.data[DOMAIN]["_websocket_registered"] = True
 
 

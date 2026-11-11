@@ -608,6 +608,7 @@ class CvvDashboardCard extends HTMLElement {
       return;
     }
 
+    this._entitaCard = scelto.entity.entity_id;
     const impronta = `${scelto.entity.entity_id}:${scelto.anno}:${scelto.remoto ? "r" : "i"}:${this._improntaStati(scelto.entity)}`;
     if (impronta === this._impronta || impronta === this._richiesta) return;
     this._impronta = impronta;
@@ -929,6 +930,8 @@ class CvvDashboardCard extends HTMLElement {
         b.setAttribute("aria-expanded", String(!aperto));
         const dettagli = b.parentElement && b.parentElement.querySelector(".dettagli");
         if (dettagli) dettagli.hidden = aperto;
+        const link = !aperto && dettagli && dettagli.querySelector(".link-riunione");
+        if (link) this._caricaLinkColloquio(link, ent);
       })
     );
     this.shadowRoot.querySelectorAll("[data-apri-colloquio]").forEach((b) =>
@@ -1488,6 +1491,47 @@ class CvvDashboardCard extends HTMLElement {
     return m && /(^|\.)(spaggiari\.eu|classeviva\.it)$/i.test(m[1]) ? m[0] : base;
   }
 
+  /** Link di riunione: solo http o https con un host, altrimenti stringa vuota. */
+  _linkRiunione(link) {
+    const testo = String(link || "");
+    if (!/^https?:\/\/[^\s"'<>]+$/i.test(testo)) return "";
+    try {
+      return new URL(testo).hostname ? testo : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  /** Chiede al server il link di un colloquio prenotato, solo quando la riga si apre. */
+  _caricaLinkColloquio(box, ent) {
+    const id = box.dataset.talk;
+    const entita = (ent.colloqui && ent.colloqui.entity_id) || this._entitaCard;
+    if (!this._hass || !entita || !id || box.dataset.caricato) return;
+    box.dataset.caricato = "1";
+    let chiamata;
+    try {
+      chiamata = Promise.resolve(
+        this._hass.callWS({ type: "cvv_dashboard/talk_link", entity_id: entita, talk_id: String(id) })
+      );
+    } catch (err) {
+      chiamata = Promise.reject(err);
+    }
+    chiamata
+      .then((r) => {
+        const url = this._linkRiunione(r && r.link);
+        if (!url) return;
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = "Apri il collegamento";
+        box.appendChild(a);
+      })
+      .catch(() => {
+        delete box.dataset.caricato;
+      });
+  }
+
   /** Colloqui con i docenti, in sola lettura: nessun comando di prenotazione. */
   _vistaColloqui(ent) {
     const tutti = this._attr(ent.colloqui, "items", []) || [];
@@ -1524,9 +1568,30 @@ class CvvDashboardCard extends HTMLElement {
       const ora = [c.ora_inizio, c.ora_fine].filter(Boolean).join("–");
       const prenotato = c.stato === "prenotato";
       if (prenotato) {
-        // booked talk: status only; details stay on the official ClasseViva site or app
-        return `<div class="colloquio prenotato" style="--ritardo:${Math.min(i * 0.04, 0.4)}s">
-          <div class="riga-colloquio"><span class="stato-colloquio">Prenotato</span></div></div>`;
+        // booked talk: the row opens its details; the meeting link is never in the
+        // entity attributes, it is asked to the server when the row opens
+        const modo = { distanza: "a distanza", presenza: "in presenza" }[c.modalita] || "";
+        const campi = [
+          ["Docente", c.docente], ["Materia", c.materia], ["Data", c.data ? giorno : ""],
+          ["Orario", ora], ["Luogo", c.aula], ["Modalità", modo],
+        ].filter(([, v]) => v);
+        const parziale = c.dati === "parziali";
+        const stato = `<span class="stato-colloquio">Prenotato${parziale ? " (dati parziali)" : ""}</span>`;
+        const stile = `style="--ritardo:${Math.min(i * 0.04, 0.4)}s"`;
+        if (!campi.length && !c.ha_link) {
+          return `<div class="colloquio prenotato" ${stile}><div class="riga-colloquio">${stato}</div></div>`;
+        }
+        const chiave = this._esc(c.id || `n${i}`);
+        const aperto = this._espansi.has("colloquio:" + (c.id || `n${i}`));
+        const righe = campi
+          .map(([k, v]) => `<div><strong>${k}:</strong> ${this._esc(v)}</div>`)
+          .join("");
+        const link = c.ha_link && c.id ? `<div class="link-riunione" data-talk="${this._esc(c.id)}"></div>` : "";
+        return `<div class="colloquio prenotato" ${stile}>
+          <button class="riga-colloquio" data-colloquio="${chiave}" aria-expanded="${aperto}">
+            <span class="data">${this._esc(giorno)}</span><span class="ora">${this._esc(ora)}</span>
+            <span class="tit">${this._esc(c.docente || "")}</span>${stato}</button>
+          <div class="dettagli"${aperto ? "" : " hidden"}>${righe}${link}</div></div>`;
       }
       const corpo = `<span class="data">${this._esc(giorno)}</span>
           <span class="ora">${this._esc(ora)}</span>
