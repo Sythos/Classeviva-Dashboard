@@ -3,7 +3,7 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
-## Unreleased
+## 0.4.12 - 2026-11-11
 
 ### Added
 
