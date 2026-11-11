@@ -10,6 +10,11 @@ Each section has the version number and the date of the release.
 - A booked talk row in the Colloqui view opens its details. The details show the teacher, the subject, the date, the time range, the place, and the mode.
 - The card shows the meeting link of a booked talk only when the user opens the row. The card gets the link from a new authenticated command. The link is not in the entity attributes and not in the Recorder.
 
+### Fixed
+
+- The meeting link stays visible in an open booked row after the card draws the view again.
+- The card gets the meeting link from the school year that the view shows.
+
 ### Changed
 
 - The booked count includes only talks with a valid date in the next 28 days.
