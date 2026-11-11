@@ -266,6 +266,39 @@ class BookedDetailsTests(unittest.TestCase):
         voci = talks.unisci(slot, {"talks": [_prenotato(1)]})
         self.assertEqual(voci[-1]["materia"], "Materia X")
 
+    def test_unknown_date_keeps_other_known_fields(self):
+        riga = talks.prenotati([_prenotato(talkDate="domani")], SLOT_ID)[0]
+        self.assertEqual(riga["data"], "")
+        self.assertEqual(riga["docente"], "Docente A")
+        self.assertEqual(riga["materia"], "Materia X, Materia Y, Materia Z")
+        self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), ("09:00", "09:10"))
+        self.assertEqual(riga["dati"], "parziali")
+        self.assertEqual(riga["stato"], "prenotato")
+
+    def test_missing_time_or_teacher_is_partial(self):
+        for extra in ({"startHour": "mattina"}, {"teacherName": None}):
+            riga = talks.prenotati([_prenotato(**extra)], SLOT_ID)[0]
+            self.assertEqual(riga["dati"], "parziali")
+            self.assertNotEqual(riga["data"], "")
+
+    def test_booked_time_is_not_a_free_slot_time(self):
+        slot = {"teachers": [{"teacherId": 11, "subjects": ["Materia X"], "frames": [
+            {"date": (OGGI + timedelta(days=1)).isoformat(), "startTime": "15:00"}]}]}
+        voci = talks.unisci(slot, {"talks": [_prenotato(1, startHour="09:00", endHour="09:10")]})
+        prenotato = [v for v in voci if v["stato"] == "prenotato"][0]
+        self.assertEqual((prenotato["ora_inizio"], prenotato["ora_fine"]), ("09:00", "09:10"))
+
+    def test_card_row_layout(self):
+        scheda = (_BASE / "www" / "cvv-dashboard-card.js").read_text(encoding="utf-8")
+        inizio = scheda.index("_vistaColloqui(ent) {")
+        vista = scheda[inizio:scheda.index("_vistaAgenda(ent, soloCompiti", inizio)]
+        # same column order as an available row, subject in the main row, no status-only row
+        self.assertIn("[c.docente, c.materia]", vista)
+        self.assertNotIn("<div class=\"riga-colloquio\">", vista)
+        self.assertIn(".riga-colloquio .stato-colloquio { margin-left: auto;", scheda)
+        self.assertIn(".colloquio.prenotato .stato-colloquio { color: var(--success-color", scheda)
+        self.assertIn("font-weight: 700", scheda[scheda.index(".colloquio.prenotato .stato-colloquio"):][:140])
+
     def test_range_and_order(self):
         corpo = [_prenotato(28), _prenotato(-1), _prenotato(27), _prenotato(0, startHour="11:00"),
                  _prenotato(0, startHour="08:30"), _prenotato(2)]

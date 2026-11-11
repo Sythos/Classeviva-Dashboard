@@ -321,7 +321,8 @@ const STILE = `
                     color: var(--primary-text-color); }
   button.riga-colloquio { cursor: pointer; }  .riga-colloquio .data, .riga-colloquio .ora { font-size: .82rem; font-variant-numeric: tabular-nums; }
   .riga-colloquio .tit { flex: 1; min-width: 120px; }
-  .colloquio.prenotato .riga-colloquio { color: var(--success-color, #2e7d32); font-weight: 700; }
+  .riga-colloquio .stato-colloquio { margin-left: auto; text-align: right; white-space: nowrap; }
+  .colloquio.prenotato .stato-colloquio { color: var(--success-color, #2e7d32); font-weight: 700; }
   .colloquio .dettagli { font-size: .85rem; margin-top: 6px; padding-left: 8px;
                          color: var(--secondary-text-color); }
   .colloquio .dettagli[hidden] { display: none; }
@@ -1594,9 +1595,7 @@ class CvvDashboardCard extends HTMLElement {
         const parziale = c.dati === "parziali";
         const stato = `<span class="stato-colloquio">Prenotato${parziale ? " (dati parziali)" : ""}</span>`;
         const stile = `style="--ritardo:${Math.min(i * 0.04, 0.4)}s"`;
-        if (!campi.length && !c.ha_link) {
-          return `<div class="colloquio prenotato" ${stile}><div class="riga-colloquio">${stato}</div></div>`;
-        }
+        const titolo = [c.docente, c.materia].filter(Boolean).join(" – ");
         const chiave = this._esc(c.id || `n${i}`);
         const aperto = this._espansi.has("colloquio:" + (c.id || `n${i}`));
         const righe = campi
@@ -1606,7 +1605,7 @@ class CvvDashboardCard extends HTMLElement {
         return `<div class="colloquio prenotato" ${stile}>
           <button class="riga-colloquio" data-colloquio="${chiave}" aria-expanded="${aperto}">
             <span class="data">${this._esc(giorno)}</span><span class="ora">${this._esc(ora)}</span>
-            <span class="tit">${this._esc(c.docente || "")}</span>${stato}</button>
+            <span class="tit">${this._esc(titolo)}</span>${stato}</button>
           <div class="dettagli"${aperto ? "" : " hidden"}>${righe}${link}</div></div>`;
       }
       const corpo = `<span class="data">${this._esc(giorno)}</span>
