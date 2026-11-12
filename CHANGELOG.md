@@ -18,6 +18,9 @@ Each section has the version number and the date of the release.
 - The Colloqui view reads the mode of a talk with one rule for available slots and booked talks.
 - The field flagByDist has priority over the generic fields. The generic field type is the last one.
 - A mode value that the parser does not know stays unknown. It does not become in presenza.
+- The confirmed structure of a booked talk has only the field flagByDist, a boolean. The value true means a distanza. The parser does not accept numbers for the mode.
+- The debug log shows the name and the type of each mode field. It never shows a value.
+- A comparison with the same booked talk in ClasseViva and Home Assistant is still pending. It needs a real account.
 
 ## 0.4.13 - 2026-11-12
 
