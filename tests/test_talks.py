@@ -240,6 +240,12 @@ class ModeTests(unittest.TestCase):
         voci = talks.prenotati({"talks": [_prenotato(1, flagByDist=False)]}, slot)
         self.assertEqual(voci[0]["modalita"], "presenza")
 
+    def test_debug_report_shows_mode_field_type_without_value(self):
+        for valore, tipo in ((True, "bool"), ("SEGRETO-MODO", "str"), (1, "int")):
+            testo = talks.descrivi({"talks": [_prenotato(1, flagByDist=valore)]})
+            self.assertIn(f"flagByDist:{tipo}", testo)
+            self.assertNotIn("SEGRETO-MODO", testo)
+
     def test_available_slot_uses_same_rules(self):
         voce = {"date": "2026-10-22", "type": "presenza", "flagByDist": True}
         self.assertEqual(talks.normalizza(voce)["modalita"], "distanza")
