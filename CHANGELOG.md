@@ -14,6 +14,10 @@ Each section has the version number and the date of the release.
 
 ### Fixed
 
+- A message link keeps a closing parenthesis or a query character that is part of the address.
+
+### Fixed
+
 - The Colloqui view reads the mode of a talk with one rule for available slots and booked talks.
 - The field flagByDist has priority over the generic fields. The generic field type is the last one.
 - A mode value that the parser does not know stays unknown. It does not become in presenza.
