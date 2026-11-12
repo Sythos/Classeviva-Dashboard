@@ -204,6 +204,47 @@ PRIVATI = {
 }
 
 
+class ModeTests(unittest.TestCase):
+    def test_boolean_flag(self):
+        self.assertEqual(talks._modo({"flagByDist": True}), "distanza")
+        self.assertEqual(talks._modo({"flagByDist": False}), "presenza")
+
+    def test_missing_null_and_unknown_are_unknown(self):
+        for voce in ({}, {"flagByDist": None}, {"flagByDist": "boh"}, {"mode": 7},
+                     {"flagByDist": "false"}, {"flagByDist": 1}):
+            self.assertEqual(talks._modo(voce), "", voce)
+
+    def test_text_whitespace_and_case(self):
+        for testo in ("distanza", " A Distanza ", "REMOTE", "Remoto", "distance"):
+            self.assertEqual(talks._modo({"mode": testo}), "distanza", testo)
+        for testo in ("presenza", " In  Presenza ", "PRESENCE", "Local"):
+            self.assertEqual(talks._modo({"mode": testo}), "presenza", testo)
+
+    def test_flag_wins_over_generic_fields(self):
+        self.assertEqual(talks._modo({"type": "presenza", "flagByDist": True}), "distanza")
+        self.assertEqual(talks._modo({"mode": "distanza", "flagByDist": False}), "presenza")
+
+    def test_unrelated_type_does_not_set_mode(self):
+        self.assertEqual(talks._modo({"type": "colloquio", "flagByDist": True}), "distanza")
+        self.assertEqual(talks._modo({"type": "colloquio"}), "")
+
+    def test_booked_rows_keep_own_mode(self):
+        corpo = {"talks": [_prenotato(1, flagByDist=True), _prenotato(2, flagByDist=False),
+                           _prenotato(3, flagByDist=None)]}
+        voci = talks.prenotati(corpo, SLOT_ID)
+        self.assertEqual([v["modalita"] for v in voci], ["distanza", "presenza", ""])
+
+    def test_slot_mode_does_not_change_booked_mode(self):
+        slot = {"teachers": [{"teacherId": 11, "teacherName": "Docente A", "flagByDist": True,
+                              "frames": []}]}
+        voci = talks.prenotati({"talks": [_prenotato(1, flagByDist=False)]}, slot)
+        self.assertEqual(voci[0]["modalita"], "presenza")
+
+    def test_available_slot_uses_same_rules(self):
+        voce = {"date": "2026-10-22", "type": "presenza", "flagByDist": True}
+        self.assertEqual(talks.normalizza(voce)["modalita"], "distanza")
+
+
 class BookedDetailsTests(unittest.TestCase):
     def test_confirmed_structure_with_many_rows(self):
         corpo = {"talks": [_prenotato(1), _prenotato(2, flagByDist=True), _prenotato(3)]}

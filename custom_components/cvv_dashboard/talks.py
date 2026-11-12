@@ -72,7 +72,8 @@ _CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl", "live_l
 _CAMPI_MESSAGGIO = (("teacherMsg", "docente"), ("myMsg", "genitore"))
 _MAX_MESSAGGIO = 2000
 _CHIAVI_NOTE = ("note", "notes", "description", "desc")
-_CHIAVI_MODO = ("modalita", "mode", "type", "talkType", "remote", "flagByDist")
+# Ordine di precedenza: prima il flag specifico, per ultimo il campo generico
+_CHIAVI_MODO = ("flagByDist", "modalita", "mode", "talkType", "remote", "type")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
 _CHIAVI_DOCENTE_ID = ("teacherId", "docente_id", "idTeacher")
 _CHIAVI_PRENOTATO = ("prenotato", "booked", "isBooked", "reserved", "taken")
@@ -97,6 +98,33 @@ def _prima(voce: dict, chiavi: tuple[str, ...]):
         if valore not in (None, "", [], {}):
             return valore
     return None
+
+
+_MODO_DISTANZA = ("remote", "remoto", "distance", "distanza", "a distanza")
+_MODO_PRESENZA = ("presence", "presenza", "in presenza", "local")
+
+
+def _modo(voce: dict) -> str:
+    """Modalita' del colloquio: "distanza", "presenza" o "" se non nota.
+
+    I campi si leggono in ordine di precedenza: il primo con un valore
+    riconosciuto vince. Un valore non riconosciuto non ferma la ricerca e
+    non diventa mai "presenza".
+    """
+    minuscole = {str(k).lower(): v for k, v in voce.items()}
+    for chiave in _CHIAVI_MODO:
+        valore = minuscole.get(chiave.lower())
+        if valore is True:
+            return "distanza"
+        if valore is False:
+            return "presenza"
+        if isinstance(valore, str):
+            testo = " ".join(valore.split()).casefold()
+            if testo in _MODO_DISTANZA:
+                return "distanza"
+            if testo in _MODO_PRESENZA:
+                return "presenza"
+    return ""
 
 
 def _testo(valore) -> str:
@@ -157,12 +185,7 @@ def normalizza(voce, stato: str | None = None) -> dict | None:
     inizio = _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data
     if not iso:
         return None
-    modo_grezzo = _prima(voce, _CHIAVI_MODO)
-    modo = ""
-    if modo_grezzo is True or str(modo_grezzo).lower() in ("remote", "remoto", "distance", "a distanza"):
-        modo = "distanza"
-    elif modo_grezzo is False or str(modo_grezzo).lower() in ("presence", "presenza", "in presenza", "local"):
-        modo = "presenza"
+    modo = _modo(voce)
     prenotato = bool(_prima(voce, _CHIAVI_PRENOTATO))
     return {
         "id": _testo(_prima(voce, _CHIAVI_ID)),
@@ -313,13 +336,7 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
         return riga
     try:
         iso, ora_data = _data_ora(_prima(voce, _CHIAVI_DATA))
-        modo = _prima(voce, _CHIAVI_MODO)
-        if modo is True or str(modo).lower() in ("remote", "remoto", "distance", "a distanza"):
-            modo_testo = "distanza"
-        elif modo is False or str(modo).lower() in ("presence", "presenza", "in presenza", "local"):
-            modo_testo = "presenza"
-        else:
-            modo_testo = ""
+        modo_testo = _modo(voce)
         docente_id = _testo(_prima(voce, _CHIAVI_DOCENTE_ID))
         link = link_valido(_prima(voce, _CHIAVI_LINK))
         inizio = _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data
