@@ -3,6 +3,14 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- The Colloqui view reads the mode of a talk with one rule for available slots and booked talks.
+- The field flagByDist has priority over the generic fields. The generic field type is the last one.
+- A mode value that the parser does not know stays unknown. It does not become in presenza.
+
 ## 0.4.13 - 2026-11-12
 
 ### Fixed
