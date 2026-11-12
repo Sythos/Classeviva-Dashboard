@@ -3,6 +3,15 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Added
+
+- A booked row in the Colloqui view shows the message of the teacher and the message of the parent. Each message has a sender label.
+- A message shows as plain text. A valid http or https address in a message is a link. It opens in a new tab after the user selects it.
+- The card gets the messages from the existing authenticated command, only when the user opens the row. The messages are not in the entity attributes and not in the Recorder.
+- The integration reads only the fields `teacherMsg` and `myMsg` of a booked talk. It still does not read the field `message`.
+
 ## 0.4.13 - 2026-11-12
 
 ### Fixed
