@@ -72,7 +72,11 @@ _CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl", "live_l
 _CAMPI_MESSAGGIO = (("teacherMsg", "docente"), ("myMsg", "genitore"))
 _MAX_MESSAGGIO = 2000
 _CHIAVI_NOTE = ("note", "notes", "description", "desc")
-# Ordine di precedenza: prima il flag specifico, per ultimo il campo generico
+# Ordine di precedenza: prima il flag specifico, per ultimo il campo generico.
+# La struttura confermata di `mytalks` ha solo `flagByDist`, un booleano
+# (vero = a distanza). Gli altri campi sono forme non confermate: valgono solo
+# se il flag manca. I numeri non si accettano finche' la risposta reale non li usa.
+# Il tipo di ogni campo si vede nel log di debug (`descrivi`), mai i valori.
 _CHIAVI_MODO = ("flagByDist", "modalita", "mode", "talkType", "remote", "type")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
 _CHIAVI_DOCENTE_ID = ("teacherId", "docente_id", "idTeacher")
