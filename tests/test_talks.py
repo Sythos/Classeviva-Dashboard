@@ -382,13 +382,48 @@ class BookedDetailsTests(unittest.TestCase):
         self.assertEqual(talks.link_prenotato(voci, ""), "")
         self.assertEqual(talks.link_prenotato(None, 101), "")
 
+    def test_messages_are_read_with_the_sender(self):
+        voci = talks.prenotati([_prenotato(1, teacherMsg=" Testo A ", myMsg="Testo B")])
+        self.assertEqual(voci[0]["messaggi"], [
+            {"da": "docente", "testo": "Testo A"}, {"da": "genitore", "testo": "Testo B"},
+        ])
+        self.assertTrue(voci[0]["ha_messaggi"])
+        # the generic field `message` is never read
+        riga = talks.prenotati([_prenotato(1, message="Testo C")])[0]
+        self.assertEqual(riga["messaggi"], [])
+        self.assertFalse(riga["ha_messaggi"])
+
+    def test_missing_or_malformed_messages_are_skipped(self):
+        for assente in (None, "", "   ", 5, True, ["x"], {"a": 1}):
+            riga = talks.prenotati([_prenotato(1, teacherMsg=assente, myMsg=assente)])[0]
+            self.assertEqual(riga["messaggi"], [], repr(assente))
+            self.assertFalse(riga["ha_messaggi"])
+        self.assertEqual(talks.prenotati([_prenotato(1)])[0]["messaggi"], [])
+
+    def test_message_lookup_by_id_is_exact(self):
+        voci = talks.prenotati([_prenotato(1, teacherMsg="Testo A"), _prenotato(2)])
+        self.assertEqual(talks.messaggi_prenotato(voci, 101), [{"da": "docente", "testo": "Testo A"}])
+        self.assertEqual(talks.messaggi_prenotato(voci, "101"), [{"da": "docente", "testo": "Testo A"}])
+        for altro in (102, 999, "", None):
+            self.assertEqual(talks.messaggi_prenotato(voci, altro), [])
+        self.assertEqual(talks.messaggi_prenotato(None, 101), [])
+        # a free slot never has messages
+        libero = [{"stato": "disponibile", "id": "101", "messaggi": [{"da": "docente", "testo": "x"}]}]
+        self.assertEqual(talks.messaggi_prenotato(libero, 101), [])
+
     def test_private_fields_never_reach_the_rows(self):
         voci = talks.prenotati([_prenotato(1, **PRIVATI)], SLOT_ID)
         self.assertEqual(set(voci[0]), {
             "id", "docente_id", "data", "ora_inizio", "ora_fine", "docente", "materia",
-            "stato", "modalita", "aula", "link", "ha_link", "dati",
+            "stato", "modalita", "aula", "link", "ha_link", "messaggi", "ha_messaggi", "dati",
         })
-        self.assertNotIn("SEGRETO", repr(voci))
+        # only the two message fields of a booked talk are read
+        self.assertEqual(
+            [m["testo"] for m in voci[0]["messaggi"]], ["SEGRETO-8", "SEGRETO-7"]
+        )
+        self.assertNotIn("SEGRETO-6", repr(voci))
+        for n in (1, 2, 3, 4, 5):
+            self.assertNotIn(f"SEGRETO-{n}", repr(voci))
         # the free slot rows must not read a message field either
         slot = {"frames": [{"date": "2026-10-22", "startTime": "09:00", **PRIVATI}]}
         self.assertNotIn("SEGRETO", repr(talks.unisci(slot, None)))
@@ -431,6 +466,7 @@ class SourceBoundaryTests(unittest.TestCase):
         self.assertIn('"_anni"', ws)
         self.assertNotIn("_coordinatore_anno(", ws)
         self.assertNotIn("async_refresh", ws)
+        self.assertIn("messaggi_prenotato(voci, msg[\"talk_id\"])", ws)
         self.assertNotIn("coordinator.api", ws)
         self.assertNotIn("async_fetch", ws)
 
@@ -438,9 +474,23 @@ class SourceBoundaryTests(unittest.TestCase):
         sensore = (_BASE / "sensor.py").read_text(encoding="utf-8")
         classe = sensore[sensore.index("class TalksSensor"):sensore.index("class AbsencesSensor")]
         # the removal of the booked link does not depend on the `completo` flag
-        prima = classe.index('if k != "link"')
+        prima = classe.index('if k not in ("link", "messaggi")')
         self.assertLess(prima, classe.index("if not completo:"))
         self.assertIn("conta_prenotati", classe)
+
+    def test_card_renders_messages_as_text_with_safe_links(self):
+        scheda = (_BASE / "www" / "cvv-dashboard-card.js").read_text(encoding="utf-8")
+        nodi = scheda[scheda.index("_nodiMessaggio(testo) {"):scheda.index("_caricaLinkAperti(ent) {")]
+        self.assertNotIn("innerHTML", nodi)
+        self.assertIn("createTextNode", nodi)
+        self.assertIn("this._linkRiunione(grezzo)", nodi)
+        self.assertIn('a.target = "_blank"', nodi)
+        self.assertIn('a.rel = "noopener noreferrer"', nodi)
+        self.assertIn("stopPropagation", nodi)
+        carica = scheda[scheda.index("_caricaLinkColloquio(box, ent) {"):scheda.index("_vistaColloqui(ent) {")]
+        self.assertNotIn("innerHTML", carica)
+        self.assertIn("Messaggio del docente:", carica)
+        self.assertIn("Messaggio del genitore:", carica)
 
     def test_logs_never_print_row_values(self):
         for nome in ("api.py", "talks.py", "coordinator.py"):
