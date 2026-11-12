@@ -1509,6 +1509,27 @@ class CvvDashboardCard extends HTMLElement {
   }
 
   /**
+   * Toglie dalla fine di un indirizzo la punteggiatura della frase. Le parentesi
+   * restano se sono bilanciate; "!" e "?" restano dentro una query o un frammento.
+   */
+  _fineIndirizzo(url) {
+    let fine = url;
+    while (fine) {
+      const c = fine[fine.length - 1];
+      const prima = fine.slice(0, -1);
+      const conta = (s, x) => s.split(x).length - 1;
+      let togli = false;
+      if (".,;:".includes(c)) togli = true;
+      else if (c === ")") togli = conta(fine, ")") > conta(fine, "(");
+      else if (c === "]") togli = conta(fine, "]") > conta(fine, "[");
+      else if (c === "!" || c === "?") togli = !/[?#]/.test(prima);
+      if (!togli) break;
+      fine = prima;
+    }
+    return fine;
+  }
+
+  /**
    * Testo di un messaggio come nodi DOM: il testo resta testo, solo gli indirizzi
    * http/https validi diventano link. Mai innerHTML, mai apertura automatica.
    */
@@ -1518,8 +1539,7 @@ class CvvDashboardCard extends HTMLElement {
     let ultimo = 0;
     let m;
     while ((m = cerca.exec(testo)) !== null) {
-      // la punteggiatura finale non fa parte dell'indirizzo
-      const grezzo = m[0].replace(/[.,;:!?)\]]+$/, "");
+      const grezzo = this._fineIndirizzo(m[0]);
       const url = this._linkRiunione(grezzo);
       if (!url) continue;
       if (m.index > ultimo) frammento.appendChild(document.createTextNode(testo.slice(ultimo, m.index)));

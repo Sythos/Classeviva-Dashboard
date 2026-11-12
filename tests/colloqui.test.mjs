@@ -33,7 +33,14 @@ function nuovaScheda(items, stato = "ok") {
     customElements: { get: (n) => definiti.get(n), define: (n, c) => definiti.set(n, c) },
     window: { customCards: [] },
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    document: { createElement: () => new Elemento() },
+    document: {
+      createElement: () => new Elemento(),
+      createDocumentFragment: () => ({
+        childNodes: [],
+        appendChild(n) { this.childNodes.push(n); return n; },
+      }),
+      createTextNode: (testo) => ({ testo }),
+    },
     console: { info() {}, error() {}, warn() {}, log() {} },
     URL,
   };
@@ -230,4 +237,20 @@ test("a booked talk without a date stays visible after the free slots", () => {
   assert.match(html, /Prenotato/);
   assert.ok(html.indexOf("Docente A") < html.indexOf("Prenotato"));
   assert.doesNotMatch(html, /Nessun colloquio disponibile/);
+});
+
+test("a message keeps the characters that belong to its address and links only http and https", () => {
+  const { card } = nuovaScheda([]);
+  const leggi = (testo) =>
+    Array.from(card._nodiMessaggio(testo).childNodes).map((n) =>
+      n.href !== undefined ? { href: n.href, target: n.target, rel: n.rel } : n.testo
+    );
+  const link = (href) => ({ href, target: "_blank", rel: "noopener noreferrer" });
+  assert.deepEqual(leggi("see https://example.org/meeting(room)"), ["see ", link("https://example.org/meeting(room)")]);
+  assert.deepEqual(leggi("(https://example.org/a)"), ["(", link("https://example.org/a"), ")"]);
+  assert.deepEqual(leggi("https://example.org/join?token=abc!"), [link("https://example.org/join?token=abc!")]);
+  assert.deepEqual(leggi("Go to https://example.org/x."), ["Go to ", link("https://example.org/x"), "."]);
+  assert.deepEqual(leggi("https://example.org/a), more"), [link("https://example.org/a"), "), more"]);
+  assert.deepEqual(leggi("javascript:alert(1)"), ["javascript:alert(1)"]);
+  assert.deepEqual(leggi("<b>x</b>"), ["<b>x</b>"]);
 });
