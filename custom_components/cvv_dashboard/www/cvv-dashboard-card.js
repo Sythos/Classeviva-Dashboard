@@ -327,6 +327,7 @@ const STILE = `
                          color: var(--secondary-text-color); }
   .colloquio .dettagli[hidden] { display: none; }
   .colloquio .dettagli a { color: var(--primary-color); }
+  .colloquio .messaggio-colloquio { margin-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .com { padding: 14px 0; border-bottom: 1px solid var(--divider-color); }
   .com:last-child { border-bottom: none; }
   .anima .com { animation: entra .4s ease both; animation-delay: var(--ritardo); }
@@ -1507,6 +1508,35 @@ class CvvDashboardCard extends HTMLElement {
     }
   }
 
+  /**
+   * Testo di un messaggio come nodi DOM: il testo resta testo, solo gli indirizzi
+   * http/https validi diventano link. Mai innerHTML, mai apertura automatica.
+   */
+  _nodiMessaggio(testo) {
+    const frammento = document.createDocumentFragment();
+    const cerca = /https?:\/\/[^\s<>"']+/gi;
+    let ultimo = 0;
+    let m;
+    while ((m = cerca.exec(testo)) !== null) {
+      // la punteggiatura finale non fa parte dell'indirizzo
+      const grezzo = m[0].replace(/[.,;:!?)\]]+$/, "");
+      const url = this._linkRiunione(grezzo);
+      if (!url) continue;
+      if (m.index > ultimo) frammento.appendChild(document.createTextNode(testo.slice(ultimo, m.index)));
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = url;
+      a.addEventListener("click", (ev) => ev.stopPropagation());
+      frammento.appendChild(a);
+      ultimo = m.index + grezzo.length;
+      cerca.lastIndex = ultimo;
+    }
+    if (ultimo < testo.length) frammento.appendChild(document.createTextNode(testo.slice(ultimo)));
+    return frammento;
+  }
+
   /** Dopo un nuovo disegno le righe già aperte hanno un contenitore vuoto: chiede di nuovo il link. */
   _caricaLinkAperti(ent) {
     this.shadowRoot
@@ -1536,13 +1566,27 @@ class CvvDashboardCard extends HTMLElement {
     chiamata
       .then((r) => {
         const url = this._linkRiunione(r && r.link);
-        if (!url) return;
-        const a = document.createElement("a");
-        a.href = url;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = "Apri il collegamento";
-        box.appendChild(a);
+        if (url) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          a.textContent = "Apri il collegamento";
+          box.appendChild(a);
+        }
+        const messaggi = r && Array.isArray(r.messages) ? r.messages : [];
+        messaggi.forEach((m) => {
+          const testo = m && typeof m.testo === "string" ? m.testo.trim() : "";
+          if (!testo) return;
+          const blocco = document.createElement("div");
+          blocco.className = "messaggio-colloquio";
+          const etichetta = document.createElement("strong");
+          etichetta.textContent = m.da === "genitore" ? "Messaggio del genitore:" : "Messaggio del docente:";
+          blocco.appendChild(etichetta);
+          blocco.appendChild(document.createTextNode(" "));
+          blocco.appendChild(this._nodiMessaggio(testo));
+          box.appendChild(blocco);
+        });
       })
       .catch(() => {
         delete box.dataset.caricato;
@@ -1601,7 +1645,7 @@ class CvvDashboardCard extends HTMLElement {
         const righe = campi
           .map(([k, v]) => `<div><strong>${k}:</strong> ${this._esc(v)}</div>`)
           .join("");
-        const link = c.ha_link && c.id ? `<div class="link-riunione" data-talk="${this._esc(c.id)}"></div>` : "";
+        const link = (c.ha_link || c.ha_messaggi) && c.id ? `<div class="link-riunione" data-talk="${this._esc(c.id)}"></div>` : "";
         return `<div class="colloquio prenotato" ${stile}>
           <button class="riga-colloquio" data-colloquio="${chiave}" aria-expanded="${aperto}">
             <span class="data">${this._esc(giorno)}</span><span class="ora">${this._esc(ora)}</span>

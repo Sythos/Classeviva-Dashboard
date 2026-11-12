@@ -54,7 +54,7 @@ from .const import (
 from .coordinator import CvvDashboardCoordinator
 from .download import CvvDashboardDownloadView
 from .sensor import anno_effettivo, card_data
-from .talks import link_prenotato
+from .talks import link_prenotato, messaggi_prenotato
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -302,10 +302,10 @@ async def _ws_dati_card(hass: HomeAssistant, connection, msg: dict) -> None:
 )
 @websocket_api.async_response
 async def _ws_link_colloquio(hass: HomeAssistant, connection, msg: dict) -> None:
-    """Return the meeting link of one booked talk, only when the card asks for it.
+    """Return the meeting link and the messages of one booked talk, only when the card asks.
 
     Read-only: it reads the data in memory and sends no request to ClasseViva.
-    The link is never stored in a state attribute, so the Recorder never gets it.
+    The link and the messages are never stored in a state attribute, so the Recorder never gets them.
     """
     registry = er.async_get(hass)
     entity = registry.async_get(msg["entity_id"])
@@ -344,11 +344,15 @@ async def _ws_link_colloquio(hass: HomeAssistant, connection, msg: dict) -> None
         coordinatore_anno = voce.get("coord") if voce else None
         dati = coordinatore_anno.data if coordinatore_anno is not None else None
     if not dati:
-        connection.send_result(msg["id"], {"link": ""})
+        connection.send_result(msg["id"], {"link": "", "messages": []})
         return
+    voci = dati.get("colloqui") or []
     connection.send_result(
         msg["id"],
-        {"link": link_prenotato(dati.get("colloqui") or [], msg["talk_id"])},
+        {
+            "link": link_prenotato(voci, msg["talk_id"]),
+            "messages": messaggi_prenotato(voci, msg["talk_id"]),
+        },
     )
 
 

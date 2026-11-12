@@ -67,7 +67,10 @@ _CHIAVI_MATERIA = ("materia", "subjects", "subject", "subjectDesc")
 _CHIAVI_AULA = ("aula", "room", "place", "location", "framePlace")
 _CHIAVI_ORARI_LIBERI = ("freeSlotTimeRange", "freeSlots")
 _CHIAVI_LINK = ("link", "url", "meetingUrl", "meetingLink", "remoteUrl", "live_link")
-# "message" non si legge mai: puo' contenere testo privato
+# "message" non si legge mai: puo' contenere testo privato.
+# Solo i due campi di `mytalks` legati alla prenotazione si leggono, in ordine della fonte.
+_CAMPI_MESSAGGIO = (("teacherMsg", "docente"), ("myMsg", "genitore"))
+_MAX_MESSAGGIO = 2000
 _CHIAVI_NOTE = ("note", "notes", "description", "desc")
 _CHIAVI_MODO = ("modalita", "mode", "type", "talkType", "remote", "flagByDist")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
@@ -281,16 +284,30 @@ def _materie_per_docente(corpo_slot) -> dict[str, str]:
     return {k: ", ".join(v) for k, v in nomi.items()}
 
 
+def _messaggi(voce: dict) -> list[dict]:
+    """Messaggi di una riga prenotata, con il mittente. Valori vuoti o non testo si saltano."""
+    minuscole = {str(k).lower(): v for k, v in voce.items()}
+    messaggi = []
+    for campo, mittente in _CAMPI_MESSAGGIO:
+        valore = minuscole.get(campo.lower())
+        testo = valore.strip() if isinstance(valore, str) else ""
+        if testo:
+            messaggi.append({"da": mittente, "testo": testo[:_MAX_MESSAGGIO]})
+    return messaggi
+
+
 def _prenotato(voce, materie: dict[str, str]) -> dict:
     """Un colloquio prenotato. Si copiano solo i campi sicuri noti.
 
-    Campi personali o di testo (contatti, messaggi, password) non si leggono mai.
+    Contatti e password non si leggono mai. I messaggi restano in `messaggi`, che
+    non esce mai dagli attributi: la card li chiede al comando websocket.
     Senza una data riconosciuta la riga resta "prenotato" con `dati` "parziali".
     """
     riga = {
         "id": "", "docente_id": "", "data": "", "ora_inizio": "", "ora_fine": "",
         "docente": "", "materia": "", "stato": STATO_PRENOTATO, "modalita": "",
-        "aula": "", "link": "", "ha_link": False, "dati": "parziali",
+        "aula": "", "link": "", "ha_link": False, "messaggi": [],
+        "ha_messaggi": False, "dati": "parziali",
     }
     if not isinstance(voce, dict):
         return riga
@@ -308,6 +325,7 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
         inizio = _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data
         docente = _testo(_prima(voce, _CHIAVI_DOCENTE))
         materia = materie.get(docente_id, "")
+        messaggi = _messaggi(voce)
         # known fields stay even when the date is not recognized
         riga.update({
             "id": _testo(_prima(voce, _CHIAVI_ID)),
@@ -321,6 +339,8 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
             "aula": _testo(_prima(voce, _CHIAVI_AULA)),
             "link": link,
             "ha_link": bool(link),
+            "messaggi": messaggi,
+            "ha_messaggi": bool(messaggi),
             "dati": "" if (iso and inizio and docente) else "parziali",
         })
     except Exception:  # noqa: BLE001 - una riga strana non deve far fallire l'elenco
@@ -376,6 +396,17 @@ def link_prenotato(voci: list[dict], id_colloquio) -> str:
         if v.get("stato") == STATO_PRENOTATO and v.get("id") == chiave:
             return link_valido(v.get("link"))
     return ""
+
+
+def messaggi_prenotato(voci: list[dict], id_colloquio) -> list[dict]:
+    """Messaggi di un colloquio prenotato, per id; vuoto se manca l'id o la riga."""
+    chiave = _testo(id_colloquio)
+    if not chiave:
+        return []
+    for v in voci or []:
+        if v.get("stato") == STATO_PRENOTATO and v.get("id") == chiave:
+            return [dict(m) for m in v.get("messaggi") or []]
+    return []
 
 
 def conta_prenotati(voci: list[dict]) -> int:

@@ -654,10 +654,10 @@ class TalksSensor(_Base):
         disponibili = sum(1 for v in voci if v.get("stato") != STATO_PRENOTATO)
         if limit is not None:
             voci = voci[:limit]
-        # il link di un colloquio prenotato non esce mai da qui: la card lo chiede
+        # link e messaggi di un colloquio prenotato non escono mai da qui: la card li chiede
         # al comando websocket `talk_link` solo quando l'utente apre la riga
         voci = [
-            {k: v for k, v in x.items() if k != "link"}
+            {k: v for k, v in x.items() if k not in ("link", "messaggi")}
             if x.get("stato") == STATO_PRENOTATO else x
             for x in voci
         ]
