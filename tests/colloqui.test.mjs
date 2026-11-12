@@ -24,9 +24,10 @@ function nuovaScheda(items, stato = "ok") {
       this.shadowRoot = { innerHTML: "", querySelector: () => null, querySelectorAll: () => [] };
       return this.shadowRoot;
     }
-    addEventListener() {}
+    addEventListener(tipo, funzione) { (this.ascoltatori ||= {})[tipo] = funzione; }
     setAttribute() {}
     getAttribute() {}
+    appendChild(n) { (this.childNodes ||= []).push(n); return n; }
   }
   const contesto = {
     HTMLElement: Elemento,
@@ -266,4 +267,79 @@ test("a message keeps the characters that belong to its address and links only h
   assert.deepEqual(leggi("https://example.org/a), more"), [link("https://example.org/a"), "), more"]);
   assert.deepEqual(leggi("javascript:alert(1)"), ["javascript:alert(1)"]);
   assert.deepEqual(leggi("<b>x</b>"), ["<b>x</b>"]);
+});
+
+// flat text of a node made by the card: "[label] text <link:href>"
+function testoNodo(n) {
+  if (n.testo !== undefined) return n.testo;
+  if (n.href !== undefined) return `<link:${n.href}>`;
+  if (n.textContent !== undefined) return n.textContent;
+  return (n.childNodes || []).map(testoNodo).join("");
+}
+
+async function messaggiDi(risposta) {
+  const { card, ent } = nuovaScheda([]);
+  card._hass = { callWS: () => Promise.resolve(risposta) };
+  card._entitaCard = "sensor.voti_test";
+  const box = { dataset: { talk: "9" }, childNodes: [], appendChild(n) { this.childNodes.push(n); return n; } };
+  card._caricaLinkColloquio(box, ent);
+  await new Promise((r) => setImmediate(r));
+  return box.childNodes.filter((n) => n.className === "messaggio-colloquio");
+}
+
+test("the details of a booked row show each message with the sender label, in source order", async () => {
+  const blocchi = await messaggiDi({
+    link: "",
+    messages: [
+      { da: "docente", testo: "Text A https://example.org/a" },
+      { da: "genitore", testo: "Text B" },
+    ],
+  });
+  assert.deepEqual(blocchi.map(testoNodo), [
+    "Messaggio del docente: Text A <link:https://example.org/a>",
+    "Messaggio del genitore: Text B",
+  ]);
+  const a = blocchi[0].childNodes[2].childNodes.find((n) => n.href !== undefined);
+  assert.equal(a.target, "_blank");
+  assert.equal(a.rel, "noopener noreferrer");
+  // a click on the link does not reach the row, so the details stay open
+  let arrivato = true;
+  a.ascoltatori.click({ stopPropagation: () => { arrivato = false; } });
+  assert.equal(arrivato, false);
+});
+
+test("the details show no message block when the source has no usable message", async () => {
+  for (const risposta of [
+    { link: "" },
+    { link: "", messages: [] },
+    { link: "", messages: null },
+    { link: "", messages: [null, {}, { da: "docente" }, { da: "docente", testo: "   " }, { da: "docente", testo: 5 }] },
+  ]) {
+    assert.equal((await messaggiDi(risposta)).length, 0, JSON.stringify(risposta));
+  }
+});
+
+test("a message with HTML or an unsafe scheme stays text and creates no link", async () => {
+  const blocchi = await messaggiDi({
+    link: "",
+    messages: [
+      { da: "docente", testo: "<img src=x onerror=alert(1)> javascript:alert(1) data:text/html,x file:///etc/x" },
+      { da: "docente", testo: "http://" },
+    ],
+  });
+  const tutti = blocchi.map(testoNodo).join("|");
+  assert.doesNotMatch(tutti, /<link:/);
+  assert.match(tutti, /<img src=x onerror=alert\(1\)> javascript:alert\(1\)/);
+});
+
+test("a booked row with a message and no meeting link has a container for the details", () => {
+  const { card, ent } = nuovaScheda([
+    { stato: "prenotato", id: "9", data: giorno(1), ora_inizio: "09:00", docente: "Docente A", ha_link: false, ha_messaggi: true },
+    { stato: "prenotato", id: "8", data: giorno(2), ora_inizio: "09:00", docente: "Docente B", ha_link: false, ha_messaggi: false },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.match(html, /data-talk="9"/);
+  assert.doesNotMatch(html, /data-talk="8"/);
+  // the attributes of the row never carry the text of a message
+  assert.doesNotMatch(html, /Messaggio del/);
 });
