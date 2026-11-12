@@ -75,7 +75,8 @@ _CHIAVI_NOTE = ("note", "notes", "description", "desc")
 # Ordine di precedenza: prima il flag specifico, per ultimo il campo generico.
 # La struttura confermata di `mytalks` ha solo `flagByDist`, un booleano
 # (vero = a distanza). Gli altri campi sono forme non confermate: valgono solo
-# se il flag manca. I numeri non si accettano finche' la risposta reale non li usa.
+# se il flag manca. Per il flag si accettano anche le stringhe "true" e "false",
+# per prudenza. I numeri non si accettano finche' la risposta reale non li usa.
 # Il tipo di ogni campo si vede nel log di debug (`descrivi`), mai i valori.
 _CHIAVI_MODO = ("flagByDist", "modalita", "mode", "talkType", "remote", "type")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
@@ -124,6 +125,8 @@ def _modo(voce: dict) -> str:
             return "presenza"
         if isinstance(valore, str):
             testo = " ".join(valore.split()).casefold()
+            if chiave == "flagByDist" and testo in ("true", "false"):
+                return "distanza" if testo == "true" else "presenza"
             if testo in _MODO_DISTANZA:
                 return "distanza"
             if testo in _MODO_PRESENZA:

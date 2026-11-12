@@ -211,8 +211,15 @@ class ModeTests(unittest.TestCase):
 
     def test_missing_null_and_unknown_are_unknown(self):
         for voce in ({}, {"flagByDist": None}, {"flagByDist": "boh"}, {"mode": 7},
-                     {"flagByDist": "false"}, {"flagByDist": 1}):
+                     {"mode": "false"}, {"flagByDist": 1}, {"flagByDist": 0}):
             self.assertEqual(talks._modo(voce), "", voce)
+
+    def test_flag_as_text_is_a_boolean_without_truth_conversion(self):
+        for testo in ("true", " TRUE ", "True"):
+            self.assertEqual(talks._modo({"flagByDist": testo}), "distanza", testo)
+        for testo in ("false", " False ", "FALSE"):
+            self.assertEqual(talks._modo({"flagByDist": testo}), "presenza", testo)
+        self.assertEqual(talks._modo({"flagByDist": "false", "type": "distanza"}), "presenza")
 
     def test_text_whitespace_and_case(self):
         for testo in ("distanza", " A Distanza ", "REMOTE", "Remoto", "distance"):
