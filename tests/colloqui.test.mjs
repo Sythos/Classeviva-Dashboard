@@ -157,6 +157,19 @@ test("a booked talk shows its status and, in the details, the safe fields", () =
   assert.match(html, /<div class="dettagli" hidden>/);
 });
 
+test("the card shows the mode of each booked row and no default for an unknown mode", () => {
+  const base = { data: giorno(1), ora_inizio: "09:00", docente: "Docente Z", stato: "prenotato", dati: "" };
+  const { card, ent } = nuovaScheda([
+    { ...base, id: "1", modalita: "presenza" },
+    { ...base, id: "2", modalita: "distanza" },
+    { ...base, id: "3", modalita: "" },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.equal((html.match(/in presenza/g) || []).length, 1);
+  assert.equal((html.match(/a distanza/g) || []).length, 1);
+  assert.equal((html.match(/Modalità/g) || []).length, 2);
+});
+
 test("a partial booked talk shows a clear status and does not hide the other rows", () => {
   const { card, ent } = nuovaScheda([
     { id: "", data: "", ora_inizio: "", stato: "prenotato", dati: "parziali" },
