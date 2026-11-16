@@ -62,6 +62,15 @@ _CHIAVI_INIZIO = (
 _CHIAVI_FINE = (
     "ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd", "frameTimeTo", "timeTo", "endHour",
 )
+# A booked row has the times of the slot (`startHour`, `endHour`) and the times of the
+# frame. Only the slot times are the times of the talk: the frame keys are not listed here.
+_CHIAVI_INIZIO_PRENOTATO = (
+    "startHour", "ora_inizio", "startTime", "timeStart", "from", "start", "begin", "hourStart",
+    "timeFrom",
+)
+_CHIAVI_FINE_PRENOTATO = (
+    "endHour", "ora_fine", "endTime", "timeEnd", "to", "end", "hourEnd", "timeTo",
+)
 _CHIAVI_DOCENTE = ("docente", "teacherName", "teacher", "teacherDesc", "name")
 _CHIAVI_MATERIA = ("materia", "subjects", "subject", "subjectDesc")
 _CHIAVI_AULA = ("aula", "room", "place", "location", "framePlace")
@@ -229,16 +238,26 @@ def _elenco(corpo, chiavi: tuple[str, ...]) -> list:
 
 def _orari(voce: dict) -> list[dict]:
     """Un frame con orari liberi diventa una voce per ogni orario libero."""
-    liberi = _prima(voce, _CHIAVI_ORARI_LIBERI)
+    minuscole = {str(k).lower(): v for k, v in voce.items()}
+    liberi = None
+    for chiave in _CHIAVI_ORARI_LIBERI:
+        if minuscole.get(chiave.lower()) is not None:
+            liberi = minuscole[chiave.lower()]
+            break
+    if liberi is None:
+        # no free-slot list at all: the frame is the only known time
+        return [voce]
     if not isinstance(liberi, list):
         liberi = [liberi] if liberi else []
     risultato = []
     for libero in liberi:
-        if isinstance(libero, dict):
+        ora_inizio = ora_fine = ""
+        testo_orario = _testo(_prima(libero, ("time",))) if isinstance(libero, dict) else ""
+        if isinstance(libero, dict) and not testo_orario:
             ora_inizio = _ora(_prima(libero, _CHIAVI_INIZIO))
             ora_fine = _ora(_prima(libero, _CHIAVI_FINE))
         else:
-            ore = re.findall(r"\d{1,2}[:.]\d{2}", _testo(libero))
+            ore = re.findall(r"\d{1,2}[:.]\d{2}", testo_orario or _testo(libero))
             ora_inizio = _ora(ore[0]) if ore else ""
             ora_fine = _ora(ore[1]) if len(ore) > 1 else ""
         if ora_inizio:
@@ -247,7 +266,8 @@ def _orari(voce: dict) -> list[dict]:
             copia["ora_inizio"] = ora_inizio
             copia["ora_fine"] = ora_fine
             risultato.append(copia)
-    return risultato or [voce]
+    # an empty list means that the frame has no free slot: no row
+    return risultato
 
 
 def _appiattisci(voci: list) -> list:
@@ -346,7 +366,7 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
         modo_testo = _modo(voce)
         docente_id = _testo(_prima(voce, _CHIAVI_DOCENTE_ID))
         link = link_valido(_prima(voce, _CHIAVI_LINK))
-        inizio = _ora(_prima(voce, _CHIAVI_INIZIO)) or ora_data
+        inizio = _ora(_prima(voce, _CHIAVI_INIZIO_PRENOTATO)) or ora_data
         docente = _testo(_prima(voce, _CHIAVI_DOCENTE))
         materia = materie.get(docente_id, "")
         messaggi = _messaggi(voce)
@@ -356,7 +376,7 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
             "docente_id": docente_id,
             "data": iso,
             "ora_inizio": inizio,
-            "ora_fine": _ora(_prima(voce, _CHIAVI_FINE)),
+            "ora_fine": _ora(_prima(voce, _CHIAVI_FINE_PRENOTATO)),
             "docente": docente,
             "materia": materia,
             "modalita": modo_testo,
