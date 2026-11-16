@@ -72,6 +72,7 @@ mostrano le sole icone.
 - **0.4.12, colloqui.** Un colloquio prenotato si apre e mostra docente, materia, data, orario, luogo e modalità. Il link della riunione compare solo quando apri la riga. Il conteggio dei prenotati include solo i colloqui dei prossimi 28 giorni.
 - **0.4.13, colloqui.** Un colloquio prenotato è una riga completa nella vista Colloqui: data, orario, docente e materia. Lo stato **Prenotato** è in verde, in grassetto, a destra della riga.
 - **0.4.14, colloqui.** Una riga di colloquio prenotato mostra i messaggi del docente e del genitore, solo quando la apri. La modalità del colloquio usa una sola regola. Un valore sconosciuto resta sconosciuto.
+- **0.4.15, colloqui.** Un colloquio prenotato mostra l'orario del suo slot, non quello della fascia. Ogni slot libero è una riga. Le righe dei colloqui prenotati non vengono mai tagliate dal limite.
 
 Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 
@@ -233,7 +234,7 @@ panel_custom:
     url_path: cvv-dashboard
     sidebar_title: CVV Dashboard
     sidebar_icon: mdi:school
-    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.14
+    module_url: /cvv_dashboard_static/cvv-dashboard-card.js?v=0.4.15
     config:
       vista: combo
       anno_scolastico: "26/27"
