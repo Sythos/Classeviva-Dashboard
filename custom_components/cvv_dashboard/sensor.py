@@ -651,9 +651,19 @@ class TalksSensor(_Base):
         voci = self._voci()
         primo, ultimo = intervallo(dt_util.now().date())
         prenotati = conta_prenotati(voci)
+        prenotati_tutti = sum(1 for v in voci if v.get("stato") == STATO_PRENOTATO)
         disponibili = sum(1 for v in voci if v.get("stato") != STATO_PRENOTATO)
         if limit is not None:
-            voci = voci[:limit]
+            # the limit applies to the free rows only: a booked row is never cut
+            liberi_ammessi = max(limit - prenotati_tutti, 0)
+            tenuti = []
+            for v in voci:
+                if v.get("stato") != STATO_PRENOTATO:
+                    if liberi_ammessi <= 0:
+                        continue
+                    liberi_ammessi -= 1
+                tenuti.append(v)
+            voci = tenuti
         # link e messaggi di un colloquio prenotato non escono mai da qui: la card li chiede
         # al comando websocket `talk_link` solo quando l'utente apre la riga
         voci = [
