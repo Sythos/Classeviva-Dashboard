@@ -4,7 +4,7 @@
 
 # CVV Dashboard
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
 [![Versione](https://img.shields.io/github/v/release/Sythos/Classeviva-Dashboard?label=versione&style=flat)](https://github.com/Sythos/Classeviva-Dashboard/releases)
 [![Validation](https://github.com/Sythos/Classeviva-Dashboard/actions/workflows/validate.yml/badge.svg?branch=main&event=push)](https://github.com/Sythos/Classeviva-Dashboard/actions/workflows/validate.yml)
 
@@ -81,35 +81,33 @@ Il dettaglio di ogni versione, in inglese, è nel [changelog](CHANGELOG.md).
 >
 > **Requisito di accesso:** CVV Dashboard usa l'accesso standard a ClasseViva con nome utente e password. Funziona solo se l'istituto consente questo metodo e non impone l'accesso tramite SPID o CIE.
 
-> **HACS deve essere già installato** in Home Assistant. Questa integrazione si installa
-> solo tramite HACS: senza HACS segui la procedura manuale più sotto.
-
 - Home Assistant 2024.7.0 o successivo.
-- [HACS](https://hacs.xyz) installato e configurato.
-- Un account ClasseViva (genitore o studente).
+- Un account ClasseViva (genitore o studente) con nome utente e password.
+
+[HACS](https://hacs.xyz) è il metodo di installazione consigliato, ma non serve per far
+funzionare l'integrazione: puoi anche installarla a mano.
 
 ## Installazione
 
 ### HACS
 
-Clicca il pulsante per aprire il repository nel tuo HACS:
+CVV Dashboard è nell'elenco standard delle integrazioni di HACS.
+
+1. Apri **HACS** e cerca **CVV Dashboard** tra le integrazioni.
+2. Scarica **CVV Dashboard** e riavvia Home Assistant.
+3. *Impostazioni → Dispositivi e servizi → Aggiungi integrazione → CVV Dashboard*.
+
+In alternativa, clicca il pulsante per aprire CVV Dashboard nel tuo HACS:
 
 [![Apri il repository in HACS su My Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Sythos&repository=Classeviva-Dashboard&category=integration)
-
-Oppure, a mano:
-
-1. HACS → menu ⋮ → *Repository personalizzati*.
-2. Incolla l'URL di questo repository, categoria **Integration**.
-3. Cerca **CVV Dashboard**, installa e riavvia Home Assistant.
-4. *Impostazioni → Dispositivi e servizi → Aggiungi integrazione → CVV Dashboard*.
 
 La card Lovelace è inclusa nell'integrazione e viene caricata da sola: non serve
 registrare nessuna risorsa.
 
-### Manuale
+### Manuale (facoltativo)
 
 Copia `custom_components/cvv_dashboard/` in `<config>/custom_components/`, riavvia
-Home Assistant e aggiungi l'integrazione come al punto 4.
+Home Assistant e aggiungi l'integrazione come al punto 3.
 
 ## Configurazione
 
@@ -392,6 +390,4 @@ la voce **CVV Dashboard**.
 
 ## Crediti
 
-Per l'accesso al registro è stato usato il codice API di
-[Davitekk](https://github.com/Davitekk), autore dell'idea originale di integrazione e
-card per ClasseViva su Home Assistant, rilasciato con licenza MIT.
+Basato sull’idea di [Davitekk](https://github.com/Davitekk) per ClasseViva Card.
