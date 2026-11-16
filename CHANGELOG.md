@@ -3,6 +3,16 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- A booked talk in the Colloqui view shows the time of its slot. It no longer shows the time of the frame.
+- A booked talk without a valid slot time has an empty time and the status partial data. It does not show the frame time.
+- The Colloqui view reads each free slot of the form pos and time. It shows one row for each free slot.
+- A frame with an empty list of free slots gives no row. A frame without a list of free slots still gives one row.
+- The limit of rows in the entity attributes applies to the free rows only. A booked row is never cut.
+
 ## 0.4.14 - 2026-11-12
 
 ### Added
