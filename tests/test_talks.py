@@ -342,6 +342,75 @@ class BookedDetailsTests(unittest.TestCase):
         prenotato = [v for v in voci if v["stato"] == "prenotato"][0]
         self.assertEqual((prenotato["ora_inizio"], prenotato["ora_fine"]), ("09:00", "09:10"))
 
+    def test_booked_time_is_the_slot_time_not_the_frame_time(self):
+        frame = {"frameTimeFrom": "08:55", "frameTimeTo": "09:45", "frameTimeRange": "08:55 - 09:45"}
+        casi = (
+            ({"startHour": "09:35", "endHour": "09:45"}, ("09:35", "09:45")),
+            ({"startHour": "08:55", "endHour": "09:05"}, ("08:55", "09:05")),
+            ({"startHour": "09:15", "endHour": "09:25"}, ("09:15", "09:25")),
+        )
+        for orari, atteso in casi:
+            riga = talks.prenotati([_prenotato(1, **orari, **frame)], SLOT_ID)[0]
+            self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), atteso)
+
+    def test_booked_row_without_slot_time_does_not_use_the_frame_time(self):
+        for extra in ({"startHour": None, "endHour": None}, {"startHour": "mattina", "endHour": "x"}):
+            riga = talks.prenotati([_prenotato(
+                1, frameTimeFrom="08:55", frameTimeTo="09:45", **extra)], SLOT_ID)[0]
+            self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), ("", ""))
+            self.assertEqual(riga["dati"], "parziali")
+            self.assertEqual(riga["stato"], "prenotato")
+
+    def _frame(self, **extra):
+        frame = {"frameDate": (OGGI + timedelta(days=1)).isoformat(), "frameTimeFrom": "08:55",
+                 "frameTimeTo": "09:45", "overallSlots": 5}
+        frame.update(extra)
+        return {"teachers": [{"teacherId": 11, "teacherName": "Docente A", "subjects": [],
+                              "frames": [frame]}]}
+
+    def test_free_slot_objects_with_pos_and_time(self):
+        libere = [{"pos": 4, "time": "09:15 - 09:25"}, {"pos": 3, "time": "09:05 - 09:15"},
+                  {"pos": 2, "time": "08:55 - 09:05"}]
+        voci = talks.unisci(self._frame(freeSlotTimeRange=libere, busySlotMask=17), [])
+        self.assertEqual([(v["ora_inizio"], v["ora_fine"]) for v in voci],
+                         [("09:15", "09:25"), ("09:05", "09:15"), ("08:55", "09:05")])
+        self.assertTrue(all(v["stato"] == "disponibile" for v in voci))
+
+    def test_empty_free_list_gives_no_row(self):
+        voci = talks.unisci(self._frame(freeSlotTimeRange=[], busySlotMask=31), [])
+        self.assertEqual(voci, [])
+
+    def test_missing_free_list_keeps_the_frame_row(self):
+        voci = talks.unisci(self._frame(), [])
+        self.assertEqual([(v["ora_inizio"], v["ora_fine"]) for v in voci], [("08:55", "09:45")])
+
+    def test_free_slot_with_unknown_time_format_gives_no_row(self):
+        voci = talks.unisci(self._frame(freeSlotTimeRange=[{"pos": 1, "time": "mattina"}]), [])
+        self.assertEqual(voci, [])
+
+    def test_free_slot_objects_with_start_and_end_keys(self):
+        libere = [{"startTime": "09:00", "endTime": "09:10"}]
+        voci = talks.unisci(self._frame(freeSlotTimeRange=libere), [])
+        self.assertEqual([(v["ora_inizio"], v["ora_fine"]) for v in voci], [("09:00", "09:10")])
+
+    def test_full_flow_free_rows_and_booked_row(self):
+        libere = [{"pos": n, "time": t} for n, t in (
+            (1, "08:55 - 09:05"), (2, "09:05 - 09:15"), (3, "09:15 - 09:25"), (4, "09:25 - 09:35"))]
+        corpo = self._frame(freeSlotTimeRange=libere, busySlotMask=16)
+        prenotato = _prenotato(1, startHour="09:35", endHour="09:45", frameTimeFrom="08:55",
+                               frameTimeTo="09:45", frameTimeRange="08:55 - 09:45")
+        voci = talks.filtra_ordina(talks.unisci(corpo, {"talks": [prenotato]}), OGGI)
+        self.assertEqual([(v["ora_inizio"], v["ora_fine"], v["stato"]) for v in voci], [
+            ("08:55", "09:05", "disponibile"), ("09:05", "09:15", "disponibile"),
+            ("09:15", "09:25", "disponibile"), ("09:25", "09:35", "disponibile"),
+            ("09:35", "09:45", "prenotato")])
+
+    def test_sensor_limit_never_cuts_a_booked_row(self):
+        sensore = (_BASE / "sensor.py").read_text(encoding="utf-8")
+        classe = sensore[sensore.index("class TalksSensor"):sensore.index("class AbsencesSensor")]
+        self.assertNotIn("voci[:limit]", classe)
+        self.assertIn("liberi_ammessi", classe)
+
     def test_card_row_layout(self):
         scheda = (_BASE / "www" / "cvv-dashboard-card.js").read_text(encoding="utf-8")
         inizio = scheda.index("_vistaColloqui(ent) {")
