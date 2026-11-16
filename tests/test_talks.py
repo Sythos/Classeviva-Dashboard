@@ -524,6 +524,154 @@ class BookedDetailsTests(unittest.TestCase):
 _BASE = pathlib.Path(__file__).resolve().parent.parent / "custom_components" / "cvv_dashboard"
 
 
+def _slots(*orari):
+    return [{"pos": n, "time": t} for n, t in enumerate(orari, start=1)]
+
+
+# One line for each frame range: (start, end, slot count, slot strings). Made-up data.
+# The slot strings follow the register: whole minutes, contiguous, not always filling the frame.
+FRAME_TABLE = (
+    ("07:55", "08:50", 5, ["07:55 - 08:06", "08:06 - 08:17", "08:17 - 08:28", "08:28 - 08:39", "08:39 - 08:50"]),
+    ("08:50", "09:45", 5, ["08:50 - 09:01", "09:01 - 09:12", "09:12 - 09:23", "09:23 - 09:34", "09:34 - 09:45"]),
+    ("08:55", "09:45", 5, ["08:55 - 09:05", "09:05 - 09:15", "09:15 - 09:25", "09:25 - 09:35", "09:35 - 09:45"]),
+    ("08:55", "09:50", 4, ["08:55 - 09:09", "09:09 - 09:23", "09:23 - 09:36", "09:36 - 09:50"]),
+    ("09:45", "10:40", 4, ["09:45 - 09:58", "09:58 - 10:11", "10:11 - 10:24", "10:24 - 10:37"]),
+    ("09:45", "10:40", 5, ["09:45 - 09:56", "09:56 - 10:07", "10:07 - 10:18", "10:18 - 10:29", "10:29 - 10:40"]),
+    ("09:50", "10:30", 4, ["09:50 - 10:00", "10:00 - 10:10", "10:10 - 10:20", "10:20 - 10:30"]),
+    ("09:50", "10:40", 5, ["09:50 - 10:00", "10:00 - 10:10", "10:10 - 10:20", "10:20 - 10:30", "10:30 - 10:40"]),
+    ("10:00", "10:55", 4, ["10:39 - 10:52"]),
+    ("10:00", "10:55", 5, ["10:22 - 10:33", "10:33 - 10:44", "10:44 - 10:55"]),
+    ("10:40", "11:35", 5, ["10:40 - 10:51", "10:51 - 11:02", "11:02 - 11:13", "11:13 - 11:24", "11:24 - 11:35"]),
+    ("10:55", "11:50", 4, ["10:55 - 11:09", "11:09 - 11:23", "11:23 - 11:36", "11:36 - 11:50"]),
+    ("10:55", "11:50", 5, ["10:55 - 11:06", "11:06 - 11:17", "11:17 - 11:28", "11:28 - 11:39", "11:39 - 11:50"]),
+    ("11:35", "12:30", 5, ["11:35 - 11:46", "11:46 - 11:57", "11:57 - 12:08", "12:08 - 12:19", "12:19 - 12:30"]),
+    ("12:00", "12:55", 4, ["12:26 - 12:39"]),
+    ("12:00", "12:55", 5, ["12:00 - 12:11", "12:33 - 12:44", "12:44 - 12:55"]),
+    ("12:55", "13:45", 5, ["12:55 - 13:05", "13:05 - 13:15", "13:15 - 13:25", "13:25 - 13:35", "13:35 - 13:45"]),
+)
+
+
+def _corpo_frame(inizio, fine, numero, orari, giorno=1, mask=0):
+    frame = {
+        "frameDate": (OGGI + timedelta(days=giorno)).isoformat(), "frameTimeFrom": inizio,
+        "frameTimeTo": fine, "frameTimeRange": f"{inizio} - {fine}", "overallSlots": numero,
+        "busySlotMask": mask, "freeSlotTimeRange": orari,
+    }
+    return {"teachers": [{"teacherId": 11, "teacherName": "Docente A", "subjects": ["Materia X"],
+                          "frames": [frame]}]}
+
+
+class FullDayTests(unittest.TestCase):
+    """Frames of the whole school day, in the shapes that the register returns."""
+
+    def test_every_frame_range_gives_one_row_for_each_free_slot(self):
+        for inizio, fine, numero, stringhe in FRAME_TABLE:
+            with self.subTest(frame=f"{inizio}-{fine}", slots=numero):
+                corpo = _corpo_frame(inizio, fine, numero, _slots(*stringhe))
+                voci = talks.unisci(corpo, [])
+                atteso = [tuple(s.split(" - ")) for s in stringhe]
+                self.assertEqual([(v["ora_inizio"], v["ora_fine"]) for v in voci], atteso)
+                self.assertTrue(all(v["stato"] == "disponibile" for v in voci))
+
+    def test_no_time_is_computed_or_rounded(self):
+        for inizio, fine, numero, stringhe in FRAME_TABLE:
+            with self.subTest(frame=f"{inizio}-{fine}", slots=numero):
+                corpo = _corpo_frame(inizio, fine, numero, _slots(*stringhe))
+                for v in talks.unisci(corpo, []):
+                    self.assertIn(v["ora_inizio"], {s.split(" - ")[0] for s in stringhe})
+                    self.assertIn(v["ora_fine"], {s.split(" - ")[1] for s in stringhe})
+                    # the row has the start and the end of one and the same entry
+                    self.assertIn(f"{v['ora_inizio']} - {v['ora_fine']}", stringhe)
+
+    def test_four_slots_of_13_minutes_end_before_the_frame(self):
+        stringhe = ["09:45 - 09:58", "09:58 - 10:11", "10:11 - 10:24", "10:24 - 10:37"]
+        voci = talks.unisci(_corpo_frame("09:45", "10:40", 4, _slots(*stringhe)), [])
+        self.assertEqual(voci[-1]["ora_fine"], "10:37")
+        self.assertNotIn("10:40", [v["ora_fine"] for v in voci])
+        self.assertEqual(len(voci), 4)
+
+    def test_five_slots_of_11_minutes(self):
+        stringhe = ["07:55 - 08:06", "08:06 - 08:17", "08:17 - 08:28", "08:28 - 08:39", "08:39 - 08:50"]
+        voci = talks.unisci(_corpo_frame("07:55", "08:50", 5, _slots(*stringhe)), [])
+        self.assertEqual([v["ora_fine"] for v in voci], ["08:06", "08:17", "08:28", "08:39", "08:50"])
+
+    def test_five_slots_of_10_minutes(self):
+        stringhe = ["08:55 - 09:05", "09:05 - 09:15", "09:15 - 09:25", "09:25 - 09:35", "09:35 - 09:45"]
+        voci = talks.unisci(_corpo_frame("08:55", "09:45", 5, _slots(*stringhe)), [])
+        self.assertEqual([v["ora_inizio"] for v in voci], ["08:55", "09:05", "09:15", "09:25", "09:35"])
+
+    def test_four_slots_of_10_minutes(self):
+        stringhe = ["09:50 - 10:00", "10:00 - 10:10", "10:10 - 10:20", "10:20 - 10:30"]
+        voci = talks.unisci(_corpo_frame("09:50", "10:30", 4, _slots(*stringhe)), [])
+        self.assertEqual([(v["ora_inizio"], v["ora_fine"]) for v in voci],
+                         [("09:50", "10:00"), ("10:00", "10:10"), ("10:10", "10:20"), ("10:20", "10:30")])
+
+    def test_booked_rows_show_the_slot_time_for_the_six_web_examples(self):
+        casi = (
+            ("08:55", "09:45", "09:35", "09:45"),
+            ("09:45", "10:40", "10:07", "10:18"),
+            ("07:55", "08:50", "08:28", "08:39"),
+            ("08:50", "09:45", "08:50", "09:01"),
+            ("09:45", "10:40", "10:29", "10:40"),
+            ("10:40", "11:35", "10:40", "10:51"),
+        )
+        for f_inizio, f_fine, inizio, fine in casi:
+            with self.subTest(slot=f"{inizio}-{fine}"):
+                riga = talks.prenotati([_prenotato(
+                    1, startHour=inizio, endHour=fine, frameTimeFrom=f_inizio, frameTimeTo=f_fine,
+                    frameTimeRange=f"{f_inizio} - {f_fine}")], SLOT_ID)[0]
+                self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), (inizio, fine))
+                self.assertEqual(riga["stato"], "prenotato")
+                self.assertNotEqual((riga["ora_inizio"], riga["ora_fine"]), (f_inizio, f_fine))
+
+    def test_booked_first_middle_and_last_slot_for_4_and_5_slots(self):
+        casi = (
+            ("09:45", "10:40", ["09:45 - 09:58", "09:58 - 10:11", "10:11 - 10:24", "10:24 - 10:37"]),
+            ("07:55", "08:50", ["07:55 - 08:06", "08:06 - 08:17", "08:17 - 08:28",
+                                "08:28 - 08:39", "08:39 - 08:50"]),
+        )
+        for f_inizio, f_fine, stringhe in casi:
+            for indice in (0, len(stringhe) // 2, len(stringhe) - 1):
+                inizio, fine = stringhe[indice].split(" - ")
+                with self.subTest(frame=f_inizio, pos=indice + 1):
+                    riga = talks.prenotati([_prenotato(
+                        1, startHour=inizio, endHour=fine, frameTimeFrom=f_inizio,
+                        frameTimeTo=f_fine, frameTimeRange=f"{f_inizio} - {f_fine}")], SLOT_ID)[0]
+                    self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), (inizio, fine))
+
+    def test_rows_sort_from_the_first_to_the_last_hour(self):
+        corpo = {"teachers": []}
+        for i, (inizio, fine, numero, stringhe) in enumerate(reversed(FRAME_TABLE)):
+            frame = _corpo_frame(inizio, fine, numero, _slots(*stringhe))["teachers"][0]
+            corpo["teachers"].append(frame)
+        voci = talks.filtra_ordina(talks.unisci(corpo, []), OGGI)
+        chiavi = [(v["data"], v["ora_inizio"]) for v in voci]
+        self.assertEqual(chiavi, sorted(chiavi))
+        self.assertEqual(voci[0]["ora_inizio"], "07:55")
+        self.assertEqual(voci[-1]["ora_fine"], "13:45")
+
+    def test_time_input_forms_give_hh_mm(self):
+        for testo in ("7:55", "07:55", "7.55"):
+            with self.subTest(testo=testo):
+                voci = talks.unisci(_corpo_frame("07:55", "08:50", 5, [{"pos": 1, "time": f"{testo} - 8.06"}]), [])
+                self.assertEqual((voci[0]["ora_inizio"], voci[0]["ora_fine"]), ("07:55", "08:06"))
+                riga = talks.prenotati([_prenotato(1, startHour=testo, endHour="8.06")], SLOT_ID)[0]
+                self.assertEqual((riga["ora_inizio"], riga["ora_fine"]), ("07:55", "08:06"))
+
+    def test_frame_without_free_slot_gives_no_row(self):
+        for numero, mask in ((4, 15), (5, 31)):
+            with self.subTest(slots=numero):
+                corpo = _corpo_frame("09:45", "10:40", numero, [], mask=mask)
+                self.assertEqual(talks.unisci(corpo, []), [])
+
+    def test_card_shows_the_times_of_the_row_without_computing(self):
+        scheda = (_BASE / "www" / "cvv-dashboard-card.js").read_text(encoding="utf-8")
+        inizio = scheda.index("_vistaColloqui(ent) {")
+        vista = scheda[inizio:scheda.index("_vistaAgenda(ent, soloCompiti", inizio)]
+        self.assertIn("[c.ora_inizio, c.ora_fine].filter(Boolean).join(", vista)
+        self.assertNotIn("new Date", vista[vista.index("c.ora_inizio"):][:200])
+
+
 class SourceBoundaryTests(unittest.TestCase):
     """Checks on the source text: HA cannot be imported in these tests."""
 
