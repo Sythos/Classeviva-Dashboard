@@ -5,6 +5,11 @@ Each section has the version number and the date of the release.
 
 ## Unreleased
 
+### Tests
+
+- The tests of the Colloqui view cover all frame ranges of the school day, with frames of 4 and 5 slots.
+- A new test checks that every time in a row exists in the response. The code never computes or rounds a time.
+
 ### Fixed
 
 - A booked talk in the Colloqui view shows the time of its slot. It no longer shows the time of the frame.
