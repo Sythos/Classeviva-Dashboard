@@ -113,9 +113,10 @@ class SourceWiringTests(unittest.TestCase):
 
     def test_services_use_the_filtered_choice(self):
         testo = (_DIR / "__init__.py").read_text(encoding="utf-8")
-        self.assertEqual(testo.count("(await _scelte(call))"), 3)
+        self.assertEqual(testo.count("await _scelte(call)"), 3)
         self.assertIn("puo_leggere(hass, user, k)", testo)
         self.assertNotIn(" _scelte(call).values()", testo)
+        self.assertNotIn("= _scelte(call)", testo)
 
 
 if __name__ == "__main__":
