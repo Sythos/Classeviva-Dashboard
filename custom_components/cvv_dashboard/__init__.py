@@ -441,8 +441,14 @@ def _registra_servizi(hass: HomeAssistant) -> None:
         Per questo l'aggiornamento automatico non lo fa da solo sulle non lette.
         """
         pub_id = str(call.data["pub_id"])
+        istanze = _scelte(call)
+        if not call.data.get("entry_id") and len(istanze) > 1:
+            # senza l'istanza non si sa a quale studente appartiene la comunicazione
+            raise HomeAssistantError(
+                "Indica entry_id: ci sono più configurazioni CVV Dashboard."
+            )
 
-        for coordinator in _scelte(call).values():
+        for coordinator in istanze.values():
             for c in (coordinator.data or {}).get("noticeboard", []):
                 if str(c.get("pubId")) != pub_id:
                     continue

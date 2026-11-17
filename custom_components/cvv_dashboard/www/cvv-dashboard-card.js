@@ -1005,7 +1005,10 @@ class CvvDashboardCard extends HTMLElement {
           const esito = await this._hass.callService(
             "cvv_dashboard",
             "leggi_comunicazione",
-            { pub_id: String(b.dataset.leggi) },
+            {
+              pub_id: String(b.dataset.leggi),
+              ...(b.dataset.entry ? { entry_id: b.dataset.entry } : {}),
+            },
             undefined,
             false,
             true
@@ -1295,6 +1298,8 @@ class CvvDashboardCard extends HTMLElement {
     const items = this._attr(ent.bacheca, "items", []) || [];
     if (!items.length) return `<div class="vuoto">Nessuna comunicazione.</div>`;
     const totale = this._attr(ent.bacheca, "totale", items.length);
+    // the config entry of the student that owns these notices
+    const entryId = this._attr(ent.bacheca, "entry_id", "") || "";
     const daLeggere = items.filter((c) => !c.letto).length;
     // il portale restituisce il testo solo delle comunicazioni ancora in corso:
     // per quelle in archivio l'unica via è "Apri", che le segna come lette
@@ -1349,7 +1354,9 @@ class CvvDashboardCard extends HTMLElement {
         }
         ${
           !testo && !c.letto
-            ? `<button class="apri" data-leggi="${this._esc(
+            ? `<button class="apri" data-entry="${this._esc(
+                entryId
+              )}" data-leggi="${this._esc(
                 c.pub_id
               )}">Apri (la segna come letta)</button>`
             : ""

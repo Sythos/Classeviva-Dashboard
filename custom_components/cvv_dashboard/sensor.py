@@ -338,6 +338,7 @@ class NoticeboardSensor(_Base):
             priorita = non_lette + lette_recenti
 
         attributi = {
+            "entry_id": self._entry_id,
             "totale": len(tutte_le_com),
             "attive": sum(1 for c in tutte_le_com if c.get("cntValidInRange")),
             "mostrate": 0,
