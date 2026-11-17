@@ -5,6 +5,11 @@ Each section has the version number and the date of the release.
 
 ## Unreleased
 
+### Fixed
+
+- The read of a noticeboard item tries the current server when a past school year is fixed. The noticeboard is global and lives on the current server.
+- A failed read does not mark the item as read. The service returns an error.
+
 ### Security
 
 - The download view checks the read permission of the user for the sensors of the selected student. It returns an error 403 when the user has no permission.
@@ -13,6 +18,7 @@ Each section has the version number and the date of the release.
 
 ### Tests
 
+- New tests cover a fixed past year, a historical 404, a response from the current server, and the cache path.
 - New tests cover allowed and denied access with two students.
 
 ### Fixed
@@ -20,6 +26,249 @@ Each section has the version number and the date of the release.
 - The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
 - The service leggi_comunicazione reads only the selected entry. It returns an error if the notice is not in that entry.
 - The service returns an error when two or more entries exist and the call has no entry_id.
+
+## 0.4.15 - 2026-11-16
+
+### Tests
+
+- The tests of the Colloqui view cover all frame ranges of the school day, with frames of 4 and 5 slots.
+- A new test checks that every time in a row exists in the response. The code never computes or rounds a time.
+
+### Fixed
+
+- A booked talk in the Colloqui view shows the time of its slot. It no longer shows the time of the frame.
+- A booked talk without a valid slot time has an empty time and the status partial data. It does not show the frame time.
+- The Colloqui view reads each free slot of the form pos and time. It shows one row for each free slot.
+- A frame with an empty list of free slots gives no row. A frame without a list of free slots still gives one row.
+- The limit of rows in the entity attributes applies to the free rows only. A booked row is never cut.
+
+## 0.4.14 - 2026-11-12
+
+### Added
+
+- A booked row in the Colloqui view shows the message of the teacher and the message of the parent. Each message has a sender label.
+- A message shows as plain text. A valid http or https address in a message is a link. It opens in a new tab after the user selects it.
+- The card gets the messages from the existing authenticated command, only when the user opens the row. The messages are not in the entity attributes and not in the Recorder.
+- The integration reads only the fields `teacherMsg` and `myMsg` of a booked talk. It still does not read the field `message`.
+
+### Fixed
+
+- A message link keeps a closing parenthesis or a query character that is part of the address.
+- The Colloqui view reads the mode of a talk with one rule for available slots and booked talks.
+- The field flagByDist has priority over the generic fields. The generic field type is the last one.
+- A mode value that the parser does not know stays unknown. It does not become in presenza.
+- The confirmed structure of a booked talk has only the field flagByDist, a boolean. The value true means a distanza. The parser also reads the text values true and false of this field. The parser does not accept numbers for the mode.
+- The debug log shows the name and the type of each mode field. It never shows a value.
+- A comparison with the same booked talk in ClasseViva and Home Assistant is still pending. It needs a real account.
+
+## 0.4.13 - 2026-11-12
+
+### Fixed
+
+- A booked talk is one complete row in the Colloqui view. The row shows the date, the booked time range, the teacher, and the subject.
+- The status Prenotato is bold green and at the far right of the row. It does not use a separate line.
+- A booked row keeps the known fields when the parser cannot read the date. The row shows the status Prenotato (dati parziali).
+
+## 0.4.12 - 2026-11-11
+
+### Added
+
+- A booked talk row in the Colloqui view opens its details. The details show the teacher, the subject, the date, the time range, the place, and the mode.
+- The card shows the meeting link of a booked talk only when the user opens the row. The card gets the link from a new authenticated command. The link is not in the entity attributes and not in the Recorder.
+
+### Fixed
+
+- The meeting link stays visible in an open booked row after the card draws the view again.
+- The card gets the meeting link from the school year that the view shows.
+
+### Changed
+
+- The booked count includes only talks with a valid date in the next 28 days.
+- A booked row with data that the parser cannot read shows the status Prenotato (dati parziali). Other rows stay visible.
+- The integration does not read the field `message` of a free slot.
+
+## 0.4.11 - 2026-11-06
+
+### Fixed
+
+- The Colloqui view does not fail when the booked talk rows have an unknown shape.
+
+### Changed
+
+- Each booked talk row shows only the status Prenotato. Open the official ClasseViva website or app to see the details.
+- The debug log shows the row count, the field names, and the field types of each talks response. It does not show values.
+
+## 0.4.10 - 2026-10-31
+
+### Added
+
+- A new sensor shows the lessons of the last 7 days: subject, hour, teacher, and topic.
+- A new calendar shows the same lessons. The response shape of the lessons endpoint is not confirmed on a real register.
+
+## 0.4.9 - 2026-10-29
+
+### Changed
+
+- The recent grades list shows one column. The newest grade is first. Each row shows the grade, the date, and the subject.
+- The Colloqui view reads free talk slots from the nested portal data. It shows the subject.
+- A free talk slot opens the official ClasseViva page in the external browser.
+- The card uses the same school year for the menu label and for the data.
+- The Agenda shows an error when the family portal fails. It does not show an empty list.
+- A failed Agenda request keeps the events of the current year.
+
+## 0.4.8 - 2026-10-28
+
+### Changed
+
+- The Compiti view shows the homework from the family portal session.
+- The list starts from today. It uses ascending due-date order.
+- Each task shows the due time, description, subject, teacher, and assignment date.
+- The Agenda view does not change.
+- A failed request keeps the last valid list.
+- The Agenda sensor has a revision hash of the homework list. The card reloads its data when the homework changes.
+
+## 0.4.7 - 2026-10-28
+
+### Changed
+
+- The HACS update alert opens the Home Assistant Updates page, `/config/updates`, on the active Home Assistant origin.
+- The alert does not start an update. Home Assistant controls the access and the installation.
+- The alert is still visible only to a signed-in user who can manage the update.
+- The integration uses `asyncio.timeout` in place of `async_timeout`.
+- The release workflow deploys the Pages only from `main`. The release archive holds only the integration folder.
+
+## 0.4.6 - 2026-10-21
+
+### Added
+
+- The card has a new tab, Assenze e Ritardi, after Compiti. It shows absences, late arrivals, and early exits.
+- The list shows the newest record first. Green text means justified. Red text means the record needs justification.
+- Each record has a text status and an icon. The tab shows the number of records that need justification.
+- The view is read-only. It has no control to justify, edit, or delete a record.
+- A new sensor, Assenze e ritardi, holds the number of records that need justification.
+- The integration reads the records with the route `absences/details`. This route is not yet confirmed on a live register.
+- A failed request keeps the last good list.
+- The card has a new last tab, Colloqui. It shows the teacher meeting slots for today and the next 27 days.
+- The view is read-only. It has no control to book, cancel, or change a meeting.
+- The slots use ascending date and time order. A booked slot is bold and green and has the text status Prenotato.
+- Select a booked slot to open or close its details: room, mode, meeting link, and notes.
+- A new sensor, Colloqui, holds the number of booked meetings.
+- The sensor does not send a request for a student account.
+- The routes and the field names of the register are not confirmed on a live account. Check them before a release.
+
+### Changed
+
+- The spacing between the tabs of the card becomes smaller before the tab row uses a scroll bar.
+- The student bar of the sidebar page uses the same rule.
+
+## 0.4.5 - 2026-10-18
+
+### Added
+
+- The card and the menu panel show a yellow "!" before the student name when HACS reports an update for this repository.
+- The "!" is visible only to a Home Assistant administrator.
+- A click on the "!" opens the HACS page of this repository. The "!" does not install the update.
+- The "!" changes when the state of a HACS update entity changes. The card does not poll HACS.
+
+## 0.4.4 - 2026-10-18
+
+### Changed
+
+- The Agenda shows all events from today, then the events of the future dates, in ascending date order. It hides the earlier dates.
+- The Agenda calculates the date again when the data refreshes.
+- The Agenda sorts the events of one day by time.
+- The Agenda of a past school year stays complete.
+
+## 0.4.3 - 2026-10-18
+
+### Fixed
+
+- The card no longer shows "Errore di configurazione" when the page gives the Home Assistant data to the card early or in part. This can happen on the first direct load of a dashboard.
+- The card keeps the Home Assistant data that arrives before the configuration. It uses the data again after the configuration is set.
+- The card handles a data request that fails at once, when the connection is not ready. It shows the normal error and tries again.
+
+## 0.4.2 - 2026-10-16
+
+### Fixed
+
+- A notice that you open in the notice board loses the "Da Leggere" label. Before this fix, the label stayed after the register marked the notice as read.
+- The card keeps the opened notice in the "only unread" list until you change the view. You can read the text before the notice leaves the list.
+
+## 0.4.1 - 2026-10-16
+
+### Fixed
+
+- The card, the data command, and the download view are now registered when Home Assistant starts, before the integration loads data from the register. Before this fix, a page that the browser loaded during the start could show "Errore di configurazione" in place of the cards. A reload of the page cleared the error.
+
+## 0.4.0 - 2026-10-15
+
+### Added
+
+- The options of the integration have a new switch: "Show in the sidebar".
+- When you turn it on, the integration adds the CVV Dashboard page to the Home Assistant sidebar. It shows every student. You do not need to edit `configuration.yaml` and you do not need to restart.
+- The switch is valid for all instances. The sidebar entry stays while at least one instance has the switch on.
+- If a page with the path `cvv-dashboard` already exists, for example from `configuration.yaml`, the integration does not change it and does not add its own entry.
+
+### Changed
+
+- The integration depends on the Home Assistant component `panel_custom`.
+- The brand images are smaller. The four files go from 965 KB to 262 KB.
+
+## 0.3.0 - 2026-10-15
+
+### Added
+
+- Home Assistant asks for a new password when the register rejects the saved password. You do not need to delete the integration.
+- The options of the integration change the password and the school year of one student.
+- When you change the school year, the entities and the device keep their ids. Dashboards and automations keep working.
+- The integration tests the new password before it saves the password. It refuses the login of a different student.
+
+## 0.2.3 - 2026-10-15
+
+### Changed
+
+- The repository has a new name: Classeviva-Dashboard. HACS does not accept "HACS" in the name of a repository.
+- The links in the integration manifest and in the README use the new name. GitHub redirects the old links.
+
+## 0.2.2 - 2026-10-15
+
+### Changed
+
+- The HACS manifest lists Italy as the country of the project.
+- The validation workflow runs every day.
+
+## 0.2.1 - 2026-10-15
+
+### Fixed
+
+- The year menu shows when the card loads for the first time. Before this fix, the menu showed only after a change of tab.
+
+## 0.2.0 - 2026-10-15
+
+### Added
+
+- The card has a menu to change the school year.
+- The automatic choice follows the current school year. A school year starts on 1 September.
+- The browser remembers the choice. In the side menu page, the choice is the same for all students.
+- The integration downloads a past school year when you ask for it. It uses the login that is already active, so no new login is necessary.
+- The new option `selettore_anno` shows or hides the menu.
+
+### Changed
+
+- The version badge and the license badge in the README use new addresses, to show the correct values.
+
+## 0.1.0 - 2026-10-15
+
+### Added
+
+- First release.
+- The integration shows grades, averages, noticeboard, agenda, notes, report documents, and homework from the ClasseViva register.
+- Home Assistant has four calendars for each student: agenda, homework, teacher notes, and room bookings.
+- The Lovelace card has seven tabs. The integration loads the card automatically.
+- A full-screen page for the side menu shows one student at a time.
+- Services refresh the data and read a notice.
+- Signed links download the attachments.
+- The repository has a security policy and private vulnerability reporting.
 
 ## 0.4.15 - 2026-11-16
 

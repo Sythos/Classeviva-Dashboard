@@ -483,7 +483,13 @@ class CvvDashboardApi:
             return self._testi[chiave]
 
         path = f"/rest/v1/students/{self.student_id}/noticeboard/read/{evt}/{pub}/101"
-        for host, _anno, _storico in self.piani_anno():
+        # La bacheca e' globale e vive sul server corrente: con un anno fissato nel
+        # passato i piani hanno solo il server storico, quindi quello corrente va
+        # aggiunto in coda (come per gli allegati).
+        hosts = [host for host, _a, _s in self.piani_anno()]
+        if BASE_HOST not in hosts:
+            hosts.append(BASE_HOST)
+        for host in hosts:
             token = self._token_per(host)
             if not token:
                 continue
