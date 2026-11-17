@@ -3,6 +3,14 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
+- The service leggi_comunicazione reads only the selected entry. It returns an error if the notice is not in that entry.
+- The service returns an error when two or more entries exist and the call has no entry_id.
+
 ## 0.4.15 - 2026-11-16
 
 ### Tests
