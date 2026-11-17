@@ -14,6 +14,7 @@ Each section has the version number and the date of the release.
 ### Tests
 
 - New tests cover allowed and denied access with two students.
+- New tests run the download view and the three services with made-up users. They check that a denied user gets no file and no message text.
 
 ## 0.4.15 - 2026-11-16
 
