@@ -3,6 +3,13 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- The card compares the student name in a sensor ID for equality. The account `anna` no longer selects the sensors of `giovanna`.
+- Year discovery, year selection, remote-year lookup and entity lookup use the same exact match.
+
 ## 0.4.15 - 2026-11-16
 
 ### Tests
