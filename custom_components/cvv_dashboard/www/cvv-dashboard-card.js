@@ -119,6 +119,24 @@ function salvaAnno(chiave, anno) {
   } catch (e) { /* storage non disponibile */ }
 }
 
+// Id dei sensori: sensor.cvv_dashboard_<studente>[_<anno>_<anno>]_<etichetta>.
+const SENSORE_STUDENTE = new RegExp(
+  "^sensor\\.cvv_dashboard_(.+?)(?:_\\d{2,4}_\\d{2,4})?_" +
+  "(?:media|voti|file_docenti|bacheca|note|scrutini|agenda|colloqui|assenze_e_ritardi|lezioni)$"
+);
+
+/** Studente di un sensore CVV Dashboard, o null se l'id non ha la forma nota. */
+function studenteDaId(id) {
+  const m = SENSORE_STUDENTE.exec(String(id || "").toLowerCase());
+  return m ? m[1] : null;
+}
+
+/** Vero se il sensore appartiene esattamente all'account indicato (nessun filtro: sempre vero). */
+function stessoStudente(id, account) {
+  const filtro = String(account || "").toLowerCase();
+  return !filtro || studenteDaId(id) === filtro;
+}
+
 function anniCard(hass, account, voti) {
   if (!hass || !hass.states) return [];
   const anni = new Map();
@@ -129,10 +147,9 @@ function anniCard(hass, account, voti) {
     // Senza un filtro studente non possiamo attribuire altri anni allo stesso account.
     if (!account) return [...anni.entries()].map(([year, etichetta]) => ({ anno: year, etichetta }));
   }
-  const filtro = String(account || "").toLowerCase();
   Object.entries(hass.states).forEach(([id, ent]) => {
     if (!id.startsWith("sensor.") || !id.includes("cvv_dashboard") || !id.includes("voti")) return;
-    if (filtro && !id.toLowerCase().includes(filtro)) return;
+    if (!stessoStudente(id, account)) return;
     const anno = annoInizio(ent.attributes && ent.attributes.anno);
     if (anno !== null) anni.set(anno, annoEtichetta(anno));
   });
@@ -682,7 +699,7 @@ class CvvDashboardCard extends HTMLElement {
     const filtro = String(config.account || config.studente || "").toLowerCase();
     const stati = this._hass.states;
     const rilevanti = new Map(Object.entries(stati)
-      .filter(([id]) => id.startsWith("sensor.") && id.includes("cvv_dashboard") && (!filtro || id.toLowerCase().includes(filtro)))
+      .filter(([id]) => id.startsWith("sensor.") && id.includes("cvv_dashboard") && stessoStudente(id, filtro))
     );
     if (selezionata) rilevanti.set(selezionata.entity_id, selezionata);
     for (const chiave of Object.keys(this._entita())) {
@@ -748,7 +765,7 @@ class CvvDashboardCard extends HTMLElement {
       if (!entity && (!config.voti || filtro)) {
         const id = Object.keys(stati).find((chiave) =>
           chiave.startsWith("sensor.") && chiave.includes("cvv_dashboard") && chiave.includes("voti") &&
-          (!filtro || chiave.toLowerCase().includes(filtro)) && annoSensore(stati[chiave]) === anno);
+          stessoStudente(chiave, filtro) && annoSensore(stati[chiave]) === anno);
         entity = id ? stati[id] : null;
       }
     } else {
@@ -757,7 +774,7 @@ class CvvDashboardCard extends HTMLElement {
       if (!entity) {
         const id = Object.keys(stati).find((chiave) =>
           chiave.startsWith("sensor.") && chiave.includes("cvv_dashboard") && chiave.includes("voti") &&
-          (!filtro || chiave.toLowerCase().includes(filtro)));
+          stessoStudente(chiave, filtro));
         entity = id ? stati[id] : null;
       }
     }
@@ -823,7 +840,7 @@ class CvvDashboardCard extends HTMLElement {
       for (const id of Object.keys(stati)) {
         if (!id.startsWith(dominio + ".") || !id.includes("cvv_dashboard")) continue;
         if (!id.includes(parola)) continue;
-        if (filtro && !id.includes(filtro)) continue;
+        if (!stessoStudente(id, filtro)) continue;
         return stati[id];
       }
       return undefined;
