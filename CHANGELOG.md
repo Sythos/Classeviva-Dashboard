@@ -3,6 +3,17 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
+## Unreleased
+
+### Fixed
+
+- The read of a noticeboard item tries the current server when a past school year is fixed. The noticeboard is global and lives on the current server.
+- A failed read does not mark the item as read. The service returns an error.
+
+### Tests
+
+- New tests cover a fixed past year, a historical 404, a response from the current server, and the cache path.
+
 ## 0.4.15 - 2026-11-16
 
 ### Tests
