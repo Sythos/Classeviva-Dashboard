@@ -3,12 +3,17 @@
 All important changes to this project are in this file.
 Each section has the version number and the date of the release.
 
-## Unreleased
+## 0.4.16 - 2026-11-17
 
 ### Fixed
 
 - The read of a noticeboard item tries the current server when a past school year is fixed. The noticeboard is global and lives on the current server.
 - A failed read does not mark the item as read. The service returns an error.
+- The card compares the student name in a sensor ID for equality. The account `anna` no longer selects the sensors of `giovanna`.
+- Year discovery, year selection, remote-year lookup and entity lookup use the same exact match.
+- The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
+- The service leggi_comunicazione reads only the selected entry. It returns an error if the notice is not in that entry.
+- The service returns an error when two or more entries exist and the call has no entry_id.
 
 ### Security
 
@@ -22,14 +27,6 @@ Each section has the version number and the date of the release.
 - New tests cover allowed and denied access with two students.
 - New tests use the accounts `anna` and `giovanna` in both sensor orders. Each panel shows only the data of the selected student.
 - New tests run the download view and the three services with made-up users. They check that a denied user gets no file and no message text.
-
-### Fixed
-
-- The card compares the student name in a sensor ID for equality. The account `anna` no longer selects the sensors of `giovanna`.
-- Year discovery, year selection, remote-year lookup and entity lookup use the same exact match.
-- The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
-- The service leggi_comunicazione reads only the selected entry. It returns an error if the notice is not in that entry.
-- The service returns an error when two or more entries exist and the call has no entry_id.
 
 ## 0.4.15 - 2026-11-16
 
