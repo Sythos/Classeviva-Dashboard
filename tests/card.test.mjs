@@ -479,3 +479,31 @@ test("an account that is only a part of another name has no sensors", () => {
   assert.equal(card._entita().voti, undefined);
   assert.equal(card._selezionaAnno(), null);
 });
+
+for (const ordine of [["giovanna", "anna"], ["anna", "giovanna"]]) {
+  test(`each panel shows only the data of the selected student (order ${ordine.join(", ")})`, () => {
+    const { contesto, definiti } = nuovoContesto();
+    carica(contesto);
+    for (const studente of ["anna", "giovanna"]) {
+      const pannello = new (definiti.get("cvv-dashboard-card-panel"))();
+      const contenuto = { innerHTML: "", replaceChildren() {} };
+      pannello.shadowRoot.querySelector = (selettore) => (selettore === ".contenuto" ? contenuto : null);
+      pannello._disegnaStudenti = () => {};
+      pannello._segnaAttivo = () => {};
+      pannello._card = new (definiti.get("cvv-dashboard-card"))();
+      pannello._card.isConnected = true;
+      pannello._hass = { states: statiStudenti(ordine), callWS: () => Promise.resolve(RISPOSTA) };
+      pannello._panel = { config: {} };
+      pannello._scelto = studente;
+      pannello._aggiorna();
+      assert.equal(pannello._chiaveCard, studente);
+      const card = pannello._card;
+      assert.equal(card._config.account, studente);
+      for (const [chiave, ent] of Object.entries(card._entita())) {
+        assert.ok(ent, `${studente} ${chiave}`);
+        assert.equal(ent.attributes.studente, studente, `${studente} ${chiave}`);
+      }
+      assert.equal(card._selezionaAnno().entity.attributes.studente, studente);
+    }
+  });
+}
