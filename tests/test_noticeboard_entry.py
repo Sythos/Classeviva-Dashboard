@@ -42,7 +42,7 @@ class FakeCoordinator:
 def _carica(istanze):
     """Run the real source of the service handler with stubs for Home Assistant."""
     sorgente = (_BASE / "__init__.py").read_text(encoding="utf-8")
-    inizio = sorgente.index("    def _scelte(call")
+    inizio = sorgente.index("    async def _scelte(call")
     fine = sorgente.index("    hass.services.async_register(", inizio)
     codice = textwrap.dedent(sorgente[inizio:fine])
     spazio = {
@@ -50,13 +50,16 @@ def _carica(istanze):
         "_coordinatori": lambda hass: istanze,
         "HomeAssistantError": HomeAssistantError,
         "ServiceCall": object,
+        "puo_leggere": lambda hass, user, entry_id: True,
+        "POLICY_READ": "read",
+        "Unauthorized": Exception,
     }
     exec(codice, spazio)
     return spazio["leggi_comunicazione"]
 
 
 def _chiama(servizio, **dati):
-    return asyncio.run(servizio(SimpleNamespace(data=dati)))
+    return asyncio.run(servizio(SimpleNamespace(data=dati, context=SimpleNamespace(user_id=None))))
 
 
 class NoticeboardEntryTests(unittest.TestCase):

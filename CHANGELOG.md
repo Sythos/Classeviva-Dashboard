@@ -5,6 +5,16 @@ Each section has the version number and the date of the release.
 
 ## Unreleased
 
+### Security
+
+- The download view checks the read permission of the user for the sensors of the selected student. It returns an error 403 when the user has no permission.
+- The services `leggi_comunicazione`, `carica_testi_bacheca` and `aggiorna` check the same permission. Without an `entry_id`, they act only on the students that the user can read.
+- A call without a user, for example from an automation, is not filtered. Administrators keep full access.
+
+### Tests
+
+- New tests cover allowed and denied access with two students.
+
 ### Fixed
 
 - The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
