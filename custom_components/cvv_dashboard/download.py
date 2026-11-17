@@ -39,6 +39,7 @@ from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.core import HomeAssistant
 
+from .access import id_istanza, puo_leggere
 from .const import BASE_HOST, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
@@ -69,6 +70,10 @@ class CvvDashboardDownloadView(HomeAssistantView):
         # Sotto DOMAIN ci sono anche valori che non sono coordinatori (es. flag).
         if coordinator is None or not hasattr(coordinator, "api"):
             return web.Response(status=404, text="Integrazione ClasseViva non trovata")
+
+        # Il permesso di lettura vale per l'istanza vera, non per la chiave con l'anno.
+        if not puo_leggere(self.hass, request.get("hass_user"), id_istanza(entry_id)):
+            return web.Response(status=403, text="Accesso negato")
 
         api = coordinator.api
         try:

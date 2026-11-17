@@ -43,6 +43,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers import entity_registry as er
 from homeassistant.loader import async_get_integration
 
+from .access import puo_leggere
 from .const import (
     CONF_ANNO,
     CONF_PASSWORD,
@@ -422,8 +423,12 @@ def _registra_servizi(hass: HomeAssistant) -> None:
     if hass.services.has_service(DOMAIN, SERVIZIO_LEGGI):
         return
 
-    def _scelte(call: ServiceCall) -> dict:
-        """Istanze su cui agire: quella indicata, o tutte se non specificata."""
+    async def _scelte(call: ServiceCall) -> dict:
+        """Istanze su cui agire: quella indicata, o tutte se non specificata.
+
+        Se la chiamata ha un utente, restano solo le istanze che l'utente puo'
+        leggere. Senza utente (automazioni, script) non c'e' nessun filtro.
+        """
         istanze = _coordinatori(hass)
         entry_id = call.data.get("entry_id")
         if entry_id:
@@ -432,6 +437,14 @@ def _registra_servizi(hass: HomeAssistant) -> None:
             scelte = istanze
         if not scelte:
             raise HomeAssistantError("Nessuna configurazione CVV Dashboard trovata.")
+        if call.context.user_id is not None:
+            user = await hass.auth.async_get_user(call.context.user_id)
+            scelte = {k: v for k, v in scelte.items() if puo_leggere(hass, user, k)}
+            if not scelte:
+                raise Unauthorized(
+                    context=call.context,
+                    permission=POLICY_READ,
+                )
         return scelte
 
     async def leggi_comunicazione(call: ServiceCall) -> dict:
@@ -442,7 +455,7 @@ def _registra_servizi(hass: HomeAssistant) -> None:
         """
         pub_id = str(call.data["pub_id"])
 
-        for coordinator in _scelte(call).values():
+        for coordinator in (await _scelte(call)).values():
             for c in (coordinator.data or {}).get("noticeboard", []):
                 if str(c.get("pubId")) != pub_id:
                     continue
@@ -482,7 +495,7 @@ def _registra_servizi(hass: HomeAssistant) -> None:
     async def carica_testi_bacheca(call: ServiceCall) -> dict:
         """Scarica dal portale i testi mancanti SENZA segnare nulla come letto."""
         totale = 0
-        for coordinator in _scelte(call).values():
+        for coordinator in (await _scelte(call)).values():
             totale += await coordinator.async_testi_bacheca()
         return {"completate": totale}
 
@@ -496,7 +509,7 @@ def _registra_servizi(hass: HomeAssistant) -> None:
 
     async def aggiorna(call: ServiceCall) -> None:
         """Forza subito un aggiornamento, senza aspettare il ciclo periodico."""
-        for coordinator in _scelte(call).values():
+        for coordinator in (await _scelte(call)).values():
             await coordinator.async_request_refresh()
 
     hass.services.async_register(DOMAIN, SERVIZIO_AGGIORNA, aggiorna, schema=SCHEMA_ISTANZA)
