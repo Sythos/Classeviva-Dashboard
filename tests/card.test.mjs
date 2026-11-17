@@ -409,3 +409,73 @@ test("the Agenda view shows a clear error when the portal data failed", () => {
   const vuoto = card._vistaAgenda({ agenda: { attributes: { items: [], stato_dati: "ok" } } });
   assert.match(vuoto, /Nessun evento in agenda/);
 });
+
+function statiStudenti(ordine) {
+  const stati = {};
+  for (const studente of ordine) {
+    for (const etichetta of ["voti", "media", "bacheca", "agenda", "note", "scrutini", "colloqui", "assenze_e_ritardi"]) {
+      const id = `sensor.cvv_dashboard_${studente}_${etichetta}`;
+      stati[id] = {
+        entity_id: id,
+        state: studente,
+        last_updated: "2026-10-01T10:00:00Z",
+        attributes: { anno: "26/27", studente },
+      };
+    }
+  }
+  return stati;
+}
+
+for (const ordine of [["giovanna", "anna"], ["anna", "giovanna"]]) {
+  test(`an account matches only its own sensors (order ${ordine.join(", ")})`, () => {
+    const { contesto, definiti } = nuovoContesto();
+    carica(contesto);
+    for (const studente of ["anna", "giovanna"]) {
+      const card = new (definiti.get("cvv-dashboard-card"))();
+      card._hass = { states: statiStudenti(ordine), callWS: () => Promise.resolve(RISPOSTA) };
+      card.setConfig({ account: studente });
+      const entita = card._entita();
+      for (const chiave of ["media", "voti", "bacheca", "agenda", "note", "scrutini", "colloqui", "assenze"]) {
+        assert.ok(entita[chiave], `${studente} ${chiave}`);
+        assert.equal(entita[chiave].attributes.studente, studente, `${studente} ${chiave}`);
+      }
+      const selezione = card._selezionaAnno();
+      assert.equal(selezione.entity.attributes.studente, studente);
+      assert.equal(selezione.remoto, false);
+    }
+  });
+
+  test(`a remote year uses a sensor of the same account (order ${ordine.join(", ")})`, () => {
+    const { contesto, definiti } = nuovoContesto();
+    carica(contesto);
+    const card = new (definiti.get("cvv-dashboard-card"))();
+    card._hass = { states: statiStudenti(ordine), callWS: () => Promise.resolve(RISPOSTA) };
+    card.setConfig({ account: "anna" });
+    card._anniServer = [2026, 2025];
+    card._annoUtente = 2025;
+    const selezione = card._selezionaAnno();
+    assert.equal(selezione.remoto, true);
+    assert.equal(selezione.entity.attributes.studente, "anna");
+  });
+
+  test(`the panel lists the exact students (order ${ordine.join(", ")})`, () => {
+    const { contesto, definiti } = nuovoContesto();
+    carica(contesto);
+    const pannello = new (definiti.get("cvv-dashboard-card-panel"))();
+    pannello._hass = { states: statiStudenti(ordine) };
+    pannello._panel = { config: {} };
+    assert.deepEqual([...pannello._elencaStudenti()], ["anna", "giovanna"]);
+    pannello._panel = { config: { studenti: ["anna"] } };
+    assert.deepEqual([...pannello._elencaStudenti()], ["anna"]);
+  });
+}
+
+test("an account that is only a part of another name has no sensors", () => {
+  const { contesto, definiti } = nuovoContesto();
+  carica(contesto);
+  const card = new (definiti.get("cvv-dashboard-card"))();
+  card._hass = { states: statiStudenti(["giovanna"]), callWS: () => Promise.resolve(RISPOSTA) };
+  card.setConfig({ account: "anna" });
+  assert.equal(card._entita().voti, undefined);
+  assert.equal(card._selezionaAnno(), null);
+});

@@ -23,6 +23,8 @@ Each section has the version number and the date of the release.
 
 ### Fixed
 
+- The card compares the student name in a sensor ID for equality. The account `anna` no longer selects the sensors of `giovanna`.
+- Year discovery, year selection, remote-year lookup and entity lookup use the same exact match.
 - The card sends the entry ID of the selected student when it opens a notice. The Bacheca attributes have a new entry_id value.
 - The service leggi_comunicazione reads only the selected entry. It returns an error if the notice is not in that entry.
 - The service returns an error when two or more entries exist and the call has no entry_id.
