@@ -480,30 +480,55 @@ test("an account that is only a part of another name has no sensors", () => {
   assert.equal(card._selezionaAnno(), null);
 });
 
+const TITOLI = { anna: "Anna", giovanna: "Giovanna" };
+
+function nuovoPannello(definiti, ordine) {
+  const pannello = new (definiti.get("cvv-dashboard-card-panel"))();
+  const contenuto = { innerHTML: "", replaceChildren() {} };
+  pannello.shadowRoot.querySelector = (selettore) => (selettore === ".contenuto" ? contenuto : null);
+  pannello._disegnaStudenti = () => {};
+  pannello._segnaAttivo = () => {};
+  pannello._card = new (definiti.get("cvv-dashboard-card"))();
+  pannello._card.isConnected = true;
+  pannello._hass = { states: statiStudenti(ordine), callWS: () => Promise.resolve(RISPOSTA) };
+  pannello._panel = { config: {} };
+  return pannello;
+}
+
+function verificaPannello(pannello, studente) {
+  assert.equal(pannello._chiaveCard, studente);
+  const card = pannello._card;
+  assert.equal(card._config.account, studente);
+  assert.equal(card._config.titolo, TITOLI[studente]);
+  for (const [chiave, ent] of Object.entries(card._entita())) {
+    assert.ok(ent, `${studente} ${chiave}`);
+    assert.equal(ent.attributes.studente, studente, `${studente} ${chiave}`);
+  }
+  assert.equal(card._selezionaAnno().entity.attributes.studente, studente);
+}
+
 for (const ordine of [["giovanna", "anna"], ["anna", "giovanna"]]) {
   test(`each panel shows only the data of the selected student (order ${ordine.join(", ")})`, () => {
     const { contesto, definiti } = nuovoContesto();
     carica(contesto);
     for (const studente of ["anna", "giovanna"]) {
-      const pannello = new (definiti.get("cvv-dashboard-card-panel"))();
-      const contenuto = { innerHTML: "", replaceChildren() {} };
-      pannello.shadowRoot.querySelector = (selettore) => (selettore === ".contenuto" ? contenuto : null);
-      pannello._disegnaStudenti = () => {};
-      pannello._segnaAttivo = () => {};
-      pannello._card = new (definiti.get("cvv-dashboard-card"))();
-      pannello._card.isConnected = true;
-      pannello._hass = { states: statiStudenti(ordine), callWS: () => Promise.resolve(RISPOSTA) };
-      pannello._panel = { config: {} };
+      const pannello = nuovoPannello(definiti, ordine);
       pannello._scelto = studente;
       pannello._aggiorna();
-      assert.equal(pannello._chiaveCard, studente);
-      const card = pannello._card;
-      assert.equal(card._config.account, studente);
-      for (const [chiave, ent] of Object.entries(card._entita())) {
-        assert.ok(ent, `${studente} ${chiave}`);
-        assert.equal(ent.attributes.studente, studente, `${studente} ${chiave}`);
-      }
-      assert.equal(card._selezionaAnno().entity.attributes.studente, studente);
+      verificaPannello(pannello, studente);
     }
+  });
+
+  test(`a panel changes the data when the user selects another student (order ${ordine.join(", ")})`, () => {
+    const { contesto, definiti } = nuovoContesto();
+    carica(contesto);
+    const pannello = nuovoPannello(definiti, ordine);
+    pannello._scelto = "anna";
+    pannello._aggiorna();
+    verificaPannello(pannello, "anna");
+    pannello._scegli("giovanna");
+    verificaPannello(pannello, "giovanna");
+    pannello._scegli("anna");
+    verificaPannello(pannello, "anna");
   });
 }
