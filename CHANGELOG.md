@@ -20,6 +20,7 @@ Each section has the version number and the date of the release.
 
 - New tests cover a fixed past year, a historical 404, a response from the current server, and the cache path.
 - New tests cover allowed and denied access with two students.
+- New tests use the accounts `anna` and `giovanna` in both sensor orders. Each panel shows only the data of the selected student.
 - New tests run the download view and the three services with made-up users. They check that a denied user gets no file and no message text.
 
 ### Fixed
