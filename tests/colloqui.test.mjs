@@ -343,3 +343,27 @@ test("a booked row with a message and no meeting link has a container for the de
   // the attributes of the row never carry the text of a message
   assert.doesNotMatch(html, /Messaggio del/);
 });
+
+test("two booked talks of one frame give two rows with their own keys", () => {
+  const { card, ent } = nuovaScheda([
+    { stato: "prenotato", id: "1", frame_id: "7", data: giorno(1), ora_inizio: "09:00", docente: "Docente A", ha_link: false },
+    { stato: "prenotato", id: "2", frame_id: "7", data: giorno(1), ora_inizio: "09:10", docente: "Docente A", ha_link: false },
+  ]);
+  const html = card._vistaColloqui(ent);
+  assert.equal((html.match(/data-colloquio="/g) || []).length, 2);
+  assert.match(html, /data-colloquio="1"/);
+  assert.match(html, /data-colloquio="2"/);
+  assert.doesNotMatch(html, /data-colloquio="7"/);
+});
+
+test("only the selected booked row is open", () => {
+  const { card, ent } = nuovaScheda([
+    { stato: "prenotato", id: "1", frame_id: "7", data: giorno(1), ora_inizio: "09:00", docente: "Docente A", ha_link: false },
+    { stato: "prenotato", id: "2", frame_id: "7", data: giorno(1), ora_inizio: "09:10", docente: "Docente A", ha_link: false },
+  ]);
+  card._espansi.add("colloquio:2");
+  const html = card._vistaColloqui(ent);
+  assert.equal((html.match(/aria-expanded="true"/g) || []).length, 1);
+  assert.match(html, /data-colloquio="2" aria-expanded="true"/);
+  assert.match(html, /data-colloquio="1" aria-expanded="false"/);
+});
