@@ -774,6 +774,21 @@ class DuplicateBookedTests(unittest.TestCase):
         voci = self._lista({"teacherName": "Docente A"}, {"teacherName": "Docente A"})
         self.assertEqual(len(voci), 2)
 
+    def test_teachers_with_other_names_stay_separate_without_teacher_id(self):
+        base = {k: v for k, v in _prenotato(1).items() if k not in ("talkId", "teacherId")}
+        voci = self._lista(base, {**base, "teacherName": "Docente B"})
+        self.assertEqual(len(voci), 2)
+        self.assertEqual(talks.conta_prenotati(voci), 2)
+
+    def test_same_teacher_name_without_teacher_id_is_one_talk(self):
+        base = {k: v for k, v in _prenotato(1).items() if k not in ("talkId", "teacherId")}
+        self.assertEqual(len(self._lista(base, dict(base))), 1)
+
+    def test_rows_without_talk_id_and_teacher_are_all_kept(self):
+        base = {k: v for k, v in _prenotato(1).items()
+                if k not in ("talkId", "teacherId", "teacherName")}
+        self.assertEqual(len(self._lista(base, dict(base))), 2)
+
     def test_frame_id_alone_does_not_merge_rows_without_talk_id(self):
         a = {k: v for k, v in _prenotato(1, frameId=7).items() if k != "talkId"}
         b = {**a, "startHour": "09:10", "endHour": "09:20"}

@@ -423,17 +423,22 @@ def _chiave_prenotato(riga: dict, voce) -> tuple | None:
     """Chiave di identita' di un colloquio prenotato; `None` se non e' sicura.
 
     Con `talkId` (o un `id`) la chiave e' solo l'ID del colloquio. Senza ID la chiave
-    e' composta: docente, data, inizio, fine e posizione dello slot. Il frame non
-    conta. Una riga senza ID e senza data e ora non si unisce mai a un'altra.
+    e' composta: docente (ID, o nome se manca l'ID), data, inizio, fine e posizione
+    dello slot. Il frame non conta. Una riga senza ID e senza data e ora, o senza
+    ID e nome del docente, non si unisce mai a un'altra.
     """
     if riga.get("id"):
         return ("id", riga["id"])
     if not (riga.get("data") and riga.get("ora_inizio")):
         return None
+    if riga.get("docente_id"):
+        docente = ("id", riga["docente_id"])
+    elif riga.get("docente"):
+        docente = ("nome", riga["docente"])
+    else:
+        return None
     pos = _testo(_prima(voce, _CHIAVI_POSIZIONE)) if isinstance(voce, dict) else ""
-    return (
-        "slot", riga["docente_id"], riga["data"], riga["ora_inizio"], riga["ora_fine"], pos,
-    )
+    return ("slot", docente, riga["data"], riga["ora_inizio"], riga["ora_fine"], pos)
 
 
 def descrivi(corpo) -> str:
