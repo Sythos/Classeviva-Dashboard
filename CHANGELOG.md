@@ -8,7 +8,8 @@ Each section has the version number and the date of the release.
 ### Fixed
 
 - A booked talk uses its `talkId` as the row ID. The `frameId` is a separate field `frame_id`. Several talks of one frame no longer share an ID.
-- The service removes repeated booked records. The key is the `talkId`. Without a `talkId`, the key is the teacher ID, date, start time, end time and slot position.
+- The service removes repeated booked records. The key is the `talkId`. Without a `talkId`, the key is the teacher ID or teacher name, the date, start time, end time and slot position.
+- A record without a `talkId` and without a teacher ID or name is never removed.
 - A record without a `talkId` and without a date and time is never removed.
 - The booked-talk count matches the rows after the removal.
 
