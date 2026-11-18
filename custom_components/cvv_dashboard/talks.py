@@ -89,6 +89,11 @@ _CHIAVI_NOTE = ("note", "notes", "description", "desc")
 # Il tipo di ogni campo si vede nel log di debug (`descrivi`), mai i valori.
 _CHIAVI_MODO = ("flagByDist", "modalita", "mode", "talkType", "remote", "type")
 _CHIAVI_ID = ("id", "frameId", "talkId", "slotId")
+# A booked talk is identified by `talkId`. Several talks can share one `frameId`,
+# so the frame ID is kept in a separate field and never used as the talk ID.
+_CHIAVI_ID_PRENOTATO = ("talkId", "id", "slotId")
+_CHIAVI_FRAME_ID = ("frameId",)
+_CHIAVI_POSIZIONE = ("pos", "slotPos", "position")
 _CHIAVI_DOCENTE_ID = ("teacherId", "docente_id", "idTeacher")
 _CHIAVI_PRENOTATO = ("prenotato", "booked", "isBooked", "reserved", "taken")
 _LISTE_SLOT = ("teacher", "teachers", "frames", "slots", "items")
@@ -354,7 +359,7 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
     Senza una data riconosciuta la riga resta "prenotato" con `dati` "parziali".
     """
     riga = {
-        "id": "", "docente_id": "", "data": "", "ora_inizio": "", "ora_fine": "",
+        "id": "", "frame_id": "", "docente_id": "", "data": "", "ora_inizio": "", "ora_fine": "",
         "docente": "", "materia": "", "stato": STATO_PRENOTATO, "modalita": "",
         "aula": "", "link": "", "ha_link": False, "messaggi": [],
         "ha_messaggi": False, "dati": "parziali",
@@ -372,7 +377,8 @@ def _prenotato(voce, materie: dict[str, str]) -> dict:
         messaggi = _messaggi(voce)
         # known fields stay even when the date is not recognized
         riga.update({
-            "id": _testo(_prima(voce, _CHIAVI_ID)),
+            "id": _testo(_prima(voce, _CHIAVI_ID_PRENOTATO)),
+            "frame_id": _testo(_prima(voce, _CHIAVI_FRAME_ID)),
             "docente_id": docente_id,
             "data": iso,
             "ora_inizio": inizio,
@@ -400,7 +406,39 @@ def prenotati(corpo, corpo_slot=None) -> list[dict]:
     `RispostaNonRiconosciuta` solo se la risposta non ha un elenco noto.
     """
     materie = _materie_per_docente(corpo_slot)
-    return [_prenotato(voce, materie) for voce in _elenco(corpo, _LISTE_PRENOTATI)]
+    righe = []
+    viste = set()
+    for voce in _elenco(corpo, _LISTE_PRENOTATI):
+        riga = _prenotato(voce, materie)
+        chiave = _chiave_prenotato(riga, voce)
+        if chiave is not None:
+            if chiave in viste:
+                continue
+            viste.add(chiave)
+        righe.append(riga)
+    return righe
+
+
+def _chiave_prenotato(riga: dict, voce) -> tuple | None:
+    """Chiave di identita' di un colloquio prenotato; `None` se non e' sicura.
+
+    Con `talkId` (o un `id`) la chiave e' solo l'ID del colloquio. Senza ID la chiave
+    e' composta: docente (ID, o nome se manca l'ID), data, inizio, fine e posizione
+    dello slot. Il frame non conta. Una riga senza ID e senza data e ora, o senza
+    ID e nome del docente, non si unisce mai a un'altra.
+    """
+    if riga.get("id"):
+        return ("id", riga["id"])
+    if not (riga.get("data") and riga.get("ora_inizio")):
+        return None
+    if riga.get("docente_id"):
+        docente = ("id", riga["docente_id"])
+    elif riga.get("docente"):
+        docente = ("nome", riga["docente"])
+    else:
+        return None
+    pos = _testo(_prima(voce, _CHIAVI_POSIZIONE)) if isinstance(voce, dict) else ""
+    return ("slot", docente, riga["data"], riga["ora_inizio"], riga["ora_fine"], pos)
 
 
 def descrivi(corpo) -> str:

@@ -423,8 +423,8 @@ class BookedDetailsTests(unittest.TestCase):
         self.assertIn("font-weight: 700", scheda[scheda.index(".colloquio.prenotato .stato-colloquio"):][:140])
 
     def test_range_and_order(self):
-        corpo = [_prenotato(28), _prenotato(-1), _prenotato(27), _prenotato(0, startHour="11:00"),
-                 _prenotato(0, startHour="08:30"), _prenotato(2)]
+        corpo = [_prenotato(28), _prenotato(-1), _prenotato(27), _prenotato(0, startHour="11:00", talkId=201),
+                 _prenotato(0, startHour="08:30", talkId=202), _prenotato(2)]
         voci = talks.filtra_ordina(talks.prenotati(corpo), OGGI)
         self.assertEqual(
             [(v["data"], v["ora_inizio"]) for v in voci],
@@ -496,7 +496,7 @@ class BookedDetailsTests(unittest.TestCase):
     def test_private_fields_never_reach_the_rows(self):
         voci = talks.prenotati([_prenotato(1, **PRIVATI)], SLOT_ID)
         self.assertEqual(set(voci[0]), {
-            "id", "docente_id", "data", "ora_inizio", "ora_fine", "docente", "materia",
+            "id", "frame_id", "docente_id", "data", "ora_inizio", "ora_fine", "docente", "materia",
             "stato", "modalita", "aula", "link", "ha_link", "messaggi", "ha_messaggi", "dati",
         })
         # only the two message fields of a booked talk are read
@@ -729,6 +729,81 @@ class SourceBoundaryTests(unittest.TestCase):
                 if "_LOGGER" in riga and ("colloqui" in riga.lower()):
                     for campo in ("live_link", "live_pw", "message", "cellNumber", "emailAddr"):
                         self.assertNotIn(campo, riga)
+
+
+class DuplicateBookedTests(unittest.TestCase):
+    """Made-up rows only. A frame can hold several booked talks."""
+
+    def _lista(self, *righe):
+        return talks.prenotati({"talks": list(righe)})
+
+    def test_repeated_talk_id_gives_one_row(self):
+        riga = _prenotato(1, frameId=7)
+        voci = self._lista(riga, dict(riga), dict(riga), dict(riga))
+        self.assertEqual(len(voci), 1)
+        self.assertEqual(talks.conta_prenotati(voci), 1)
+
+    def test_talk_id_wins_over_frame_id(self):
+        voce = self._lista(_prenotato(1, frameId=7, talkId=55))[0]
+        self.assertEqual(voce["id"], "55")
+        self.assertEqual(voce["frame_id"], "7")
+
+    def test_two_talks_in_one_frame_stay_separate(self):
+        a = _prenotato(1, frameId=7, talkId=1)
+        b = _prenotato(1, frameId=7, talkId=2, startHour="09:10", endHour="09:20")
+        voci = self._lista(a, b)
+        self.assertEqual([v["id"] for v in voci], ["1", "2"])
+        self.assertEqual(talks.conta_prenotati(voci), 2)
+
+    def test_same_talk_id_with_other_data_is_still_one_talk(self):
+        voci = self._lista(_prenotato(1, talkId=9), _prenotato(2, talkId=9))
+        self.assertEqual(len(voci), 1)
+
+    def test_rows_without_id_use_the_composite_key(self):
+        base = {k: v for k, v in _prenotato(1).items() if k != "talkId"}
+        doppio = self._lista(base, dict(base))
+        self.assertEqual(len(doppio), 1)
+        varianti = [
+            {**base, "teacherId": 12}, {**base, "talkDate": (OGGI + timedelta(days=2)).isoformat()},
+            {**base, "startHour": "09:10"}, {**base, "endHour": "09:20"}, {**base, "pos": 2},
+        ]
+        voci = self._lista(base, *varianti)
+        self.assertEqual(len(voci), 1 + len(varianti))
+
+    def test_rows_without_id_and_without_date_are_all_kept(self):
+        voci = self._lista({"teacherName": "Docente A"}, {"teacherName": "Docente A"})
+        self.assertEqual(len(voci), 2)
+
+    def test_teachers_with_other_names_stay_separate_without_teacher_id(self):
+        base = {k: v for k, v in _prenotato(1).items() if k not in ("talkId", "teacherId")}
+        voci = self._lista(base, {**base, "teacherName": "Docente B"})
+        self.assertEqual(len(voci), 2)
+        self.assertEqual(talks.conta_prenotati(voci), 2)
+
+    def test_same_teacher_name_without_teacher_id_is_one_talk(self):
+        base = {k: v for k, v in _prenotato(1).items() if k not in ("talkId", "teacherId")}
+        self.assertEqual(len(self._lista(base, dict(base))), 1)
+
+    def test_rows_without_talk_id_and_teacher_are_all_kept(self):
+        base = {k: v for k, v in _prenotato(1).items()
+                if k not in ("talkId", "teacherId", "teacherName")}
+        self.assertEqual(len(self._lista(base, dict(base))), 2)
+
+    def test_frame_id_alone_does_not_merge_rows_without_talk_id(self):
+        a = {k: v for k, v in _prenotato(1, frameId=7).items() if k != "talkId"}
+        b = {**a, "startHour": "09:10", "endHour": "09:20"}
+        self.assertEqual(len(self._lista(a, b)), 2)
+
+    def test_unisci_keeps_free_rows_and_dedupes_booked_rows(self):
+        riga = _prenotato(1)
+        voci = talks.unisci(SLOT_ID, {"talks": [riga, dict(riga)]})
+        self.assertEqual(talks.conta_prenotati(voci), 1)
+
+    def test_lookup_by_talk_id_in_a_shared_frame(self):
+        a = _prenotato(1, frameId=7, talkId=1, teacherMsg="uno")
+        b = _prenotato(1, frameId=7, talkId=2, teacherMsg="due")
+        voci = self._lista(a, b)
+        self.assertEqual(talks.messaggi_prenotato(voci, 2)[0]["testo"], "due")
 
 
 class RetentionTests(unittest.TestCase):
